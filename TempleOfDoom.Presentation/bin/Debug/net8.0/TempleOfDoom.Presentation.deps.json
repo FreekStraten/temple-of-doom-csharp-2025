@@ -1,0 +1,50 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "TempleOfDoom.Presentation/1.0.0": {
+        "dependencies": {
+          "TempleOfDoom.BusinessLogic": "1.0.0",
+          "TempleOfDoom.DataAccess": "1.0.0"
+        },
+        "runtime": {
+          "TempleOfDoom.Presentation.dll": {}
+        }
+      },
+      "TempleOfDoom.BusinessLogic/1.0.0": {
+        "dependencies": {
+          "TempleOfDoom.DataAccess": "1.0.0"
+        },
+        "runtime": {
+          "TempleOfDoom.BusinessLogic.dll": {}
+        }
+      },
+      "TempleOfDoom.DataAccess/1.0.0": {
+        "runtime": {
+          "TempleOfDoom.DataAccess.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "TempleOfDoom.Presentation/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "TempleOfDoom.BusinessLogic/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "TempleOfDoom.DataAccess/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -1,0 +1,12 @@
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\bin\Debug\net8.0\TempleOfDoom.DataAccess.deps.json
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\bin\Debug\net8.0\TempleOfDoom.DataAccess.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\bin\Debug\net8.0\TempleOfDoom.DataAccess.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.AssemblyInfoInputs.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.AssemblyInfo.cs
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.csproj.CoreCompileInputs.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\refint\TempleOfDoom.DataAccess.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\TempleOfDoom.DataAccess.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\obj\Debug\net8.0\ref\TempleOfDoom.DataAccess.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.DataAccess\bin\Debug\net8.0\Resources\TempleOfDoom.json

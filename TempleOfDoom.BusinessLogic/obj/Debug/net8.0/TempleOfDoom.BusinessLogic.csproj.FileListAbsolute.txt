@@ -1,0 +1,16 @@
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.AssemblyInfoInputs.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.AssemblyInfo.cs
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.csproj.CoreCompileInputs.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\TempleOfDoom.BusinessLogic.deps.json
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\TempleOfDoom.BusinessLogic.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\TempleOfDoom.BusinessLogic.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\TempleOfDoom.DataAccess.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\TempleOfDoom.DataAccess.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.csproj.AssemblyReference.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.csproj.CopyComplete
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\refint\TempleOfDoom.BusinessLogic.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\ref\TempleOfDoom.BusinessLogic.dll
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\Resources\TempleOfDoom.json

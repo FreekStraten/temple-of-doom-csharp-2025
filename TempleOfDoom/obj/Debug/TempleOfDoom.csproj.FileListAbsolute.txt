@@ -1,0 +1,7 @@
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\bin\Debug\TempleOfDoom.exe.config
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\bin\Debug\TempleOfDoom.exe
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\bin\Debug\TempleOfDoom.pdb
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\obj\Debug\TempleOfDoom.csproj.AssemblyReference.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\obj\Debug\TempleOfDoom.csproj.CoreCompileInputs.cache
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\obj\Debug\TempleOfDoom.exe
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom\obj\Debug\TempleOfDoom.pdb
