@@ -19,3 +19,4 @@ C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-fr
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.Presentation\obj\Debug\net8.0\TempleOfDoom.Presentation.genruntimeconfig.cache
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.Presentation\obj\Debug\net8.0\ref\TempleOfDoom.Presentation.dll
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.Presentation\bin\Debug\net8.0\Resources\TempleOfDoom.json
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.Presentation\obj\Debug\net8.0\TempleOfDoom.Presentation.sourcelink.json

@@ -17,19 +17,16 @@ namespace TempleOfDoom.Presentation
                 {
                     if (x == player.X && y == player.Y)
                     {
-                        Console.Write("P "); // Player
-                    }
-                    else if (room.Items.Any(item => item.X == x && item.Y == y))
-                    {
-                        Console.Write("I "); // Item
+                        Console.Write("X ");
                     }
                     else
                     {
-                        Console.Write(". "); // Empty space
+                        Console.Write($"{room.Layout[y, x].Representation} ");
                     }
                 }
                 Console.WriteLine();
             }
         }
+
     }
 }

@@ -13,15 +13,16 @@ namespace TempleOfDoom.BusinessLogic.Mappers
     {
         public static Room MapRoomDtoToRoom(RoomDto roomDto)
         {
-            return new Room
+            var room = new Room(roomDto.Width, roomDto.Height)
             {
                 Id = roomDto.Id,
-                Type = roomDto.Type,
-                Width = roomDto.Width,
-                Height = roomDto.Height,
-                Items = /* roomDto.Items?.Select(itemDto => MapItemDtoToItem(itemDto)).ToList() ?? new List<Item>() */ []
+                Type = roomDto.Type
             };
+
+            room.GenerateLayout();
+            return room;
         }
+
 
         /*
         public static Item MapItemDtoToItem(ItemDto itemDto)
