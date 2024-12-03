@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
@@ -14,15 +15,18 @@ namespace TempleOfDoom.BusinessLogic.Models
         public string Type { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public List<Item> Items { get; set; } = new List<Item>();
-
         public ITile[,] Layout { get; private set; }
 
         public Room(int width, int height)
         {
             Width = width;
             Height = height;
-            Layout = new ITile[height, width];
+            Layout = new ITile[Height, Width];
+        }
+
+        public ITile GetTileAt(Coordinates coordinates)
+        {
+            return Layout[coordinates.Y, coordinates.X];
         }
 
         public void GenerateLayout()
@@ -31,17 +35,12 @@ namespace TempleOfDoom.BusinessLogic.Models
             {
                 for (int x = 0; x < Width; x++)
                 {
-                    if (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
-                    {
-                        Layout[y, x] = new WallTile();
-                    }
-                    else
-                    {
-                        Layout[y, x] = new FloorTile();
-                    }
+                    Layout[y, x] = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+                        ? new WallTile()
+                        : new FloorTile();
                 }
             }
         }
-
     }
 }
+

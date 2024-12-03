@@ -3,16 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
-    public abstract class Item
+    public class Item
     {
-        public string Type { get; protected set; }
-        public int X { get; set; }
-        public int Y { get; set; }
+        public Coordinates Position { get; set; }
+        public string Type { get; set; }
 
-        // Abstract method for interaction
-        public abstract void Interact(Player player);
+        public Item(int x, int y, string type)
+        {
+            Position = new Coordinates(x, y);
+            Type = type;
+        }
     }
 }

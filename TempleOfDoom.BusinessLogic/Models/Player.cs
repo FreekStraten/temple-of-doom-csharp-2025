@@ -3,33 +3,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
     public class Player
     {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int Health { get; set; } = 3;
+        public Coordinates Position { get; set; }
+        public int Lives { get; set; }
+
+        public Player(int x, int y, int lives = 3)
+        {
+            Position = new Coordinates(x, y);
+            Lives = lives;
+        }
 
         public void Move(Direction direction)
         {
-            switch (direction)
+            Coordinates movement = direction switch
             {
-                case Direction.North: Y--; break;
-                case Direction.East: X++; break;
-                case Direction.South: Y++; break;
-                case Direction.West: X--; break;
-            }
-        }
-    }
+                Direction.North => new Coordinates(0, -1),
+                Direction.South => new Coordinates(0, 1),
+                Direction.West => new Coordinates(-1, 0),
+                Direction.East => new Coordinates(1, 0),
+                _ => new Coordinates(0, 0)
+            };
 
-    public enum Direction
-    {
-        North,
-        East,
-        South,
-        West
+            Position += movement;
+        }
     }
 }
 

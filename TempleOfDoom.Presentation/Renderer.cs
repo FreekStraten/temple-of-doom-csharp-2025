@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Models;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.Presentation
 {
@@ -15,18 +16,21 @@ namespace TempleOfDoom.Presentation
             {
                 for (int x = 0; x < room.Width; x++)
                 {
-                    if (x == player.X && y == player.Y)
+                    Coordinates currentCoordinates = new Coordinates(x, y);
+
+                    if (currentCoordinates.Equals(player.Position))
                     {
-                        Console.Write("X ");
+                        Console.Write("P ");
                     }
                     else
                     {
-                        Console.Write($"{room.Layout[y, x].Representation} ");
+                        Console.Write($"{room.GetTileAt(currentCoordinates).Representation} ");
                     }
                 }
                 Console.WriteLine();
             }
         }
+
 
     }
 }

@@ -1,4 +1,6 @@
-﻿using TempleOfDoom.BusinessLogic.Mappers;
+﻿using TempleOfDoom.BusinessLogic;
+using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Mappers;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.DataAccess;
 
@@ -19,10 +21,47 @@ namespace TempleOfDoom.Presentation
             Room firstRoom = LevelMapper.MapRoomDtoToRoom(levelData.Rooms[0]);
             Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
 
-            // Render the room
-            Renderer.RenderRoom(firstRoom, player);
+            // Create GameService instance
+            GameService gameService = new GameService(firstRoom, player);
 
-            // Additional game logic
+            // Game loop
+            bool isRunning = true;
+            while (isRunning)
+            {
+                Console.Clear();
+
+                // Render the room
+                Renderer.RenderRoom(firstRoom, player);
+
+                // Get user input
+                ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                Direction? direction = null;
+
+                switch (keyInfo.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        direction = Direction.North;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        direction = Direction.South;
+                        break;
+                    case ConsoleKey.LeftArrow:
+                        direction = Direction.West;
+                        break;
+                    case ConsoleKey.RightArrow:
+                        direction = Direction.East;
+                        break;
+                    case ConsoleKey.Escape:
+                        isRunning = false;
+                        break;
+                }
+
+                if (direction.HasValue)
+                {
+                    // Delegate movement handling to GameService
+                    gameService.HandlePlayerMovement(direction.Value);
+                }
+            }
         }
     }
 }

@@ -41,12 +41,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             //log playerDto.StartX, playerDto.StartY, playerDto.Lives to the console
             Console.WriteLine($"PlayerDto: StartX: {playerDto.StartX}, StartY: {playerDto.StartY}, Lives: {playerDto.Lives}");
 
-            return new Player
-            {
-                X = playerDto.StartX,
-                Y = playerDto.StartY,
-                Health = playerDto.Lives
-            };
+            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives);
         }
     }
 }
