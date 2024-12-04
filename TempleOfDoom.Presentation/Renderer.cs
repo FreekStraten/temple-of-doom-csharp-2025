@@ -30,7 +30,5 @@ namespace TempleOfDoom.Presentation
                 Console.WriteLine();
             }
         }
-
-
     }
 }

@@ -35,31 +35,16 @@ namespace TempleOfDoom.Presentation
 
                 // Get user input
                 ConsoleKeyInfo keyInfo = Console.ReadKey(true);
-                Direction? direction = null;
-
-                switch (keyInfo.Key)
-                {
-                    case ConsoleKey.UpArrow:
-                        direction = Direction.North;
-                        break;
-                    case ConsoleKey.DownArrow:
-                        direction = Direction.South;
-                        break;
-                    case ConsoleKey.LeftArrow:
-                        direction = Direction.West;
-                        break;
-                    case ConsoleKey.RightArrow:
-                        direction = Direction.East;
-                        break;
-                    case ConsoleKey.Escape:
-                        isRunning = false;
-                        break;
-                }
+                Direction? direction = InputHandler.GetDirectionFromInput(keyInfo.Key);
 
                 if (direction.HasValue)
                 {
                     // Delegate movement handling to GameService
                     gameService.HandlePlayerMovement(direction.Value);
+                }
+                else if (keyInfo.Key == ConsoleKey.Escape)
+                {
+                    isRunning = false;
                 }
             }
         }

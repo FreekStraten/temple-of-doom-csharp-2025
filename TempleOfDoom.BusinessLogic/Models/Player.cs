@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Helpers;
 using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
     public class Player
     {
-        public Coordinates Position { get; set; }
+        public Coordinates Position { get; private set; }
         public int Lives { get; set; }
 
         public Player(int x, int y, int lives = 3)
@@ -19,19 +20,39 @@ namespace TempleOfDoom.BusinessLogic.Models
             Lives = lives;
         }
 
-        public void Move(Direction direction)
+        public Coordinates GetNewPosition(Direction direction)
         {
-            Coordinates movement = direction switch
-            {
-                Direction.North => new Coordinates(0, -1),
-                Direction.South => new Coordinates(0, 1),
-                Direction.West => new Coordinates(-1, 0),
-                Direction.East => new Coordinates(1, 0),
-                _ => new Coordinates(0, 0)
-            };
+            Coordinates movement = DirectionHelper.ToCoordinates(direction);
+            return Position + movement;
+        }
 
-            Position += movement;
+
+        public void UpdatePosition(Coordinates newPosition)
+        {
+            Position = newPosition;
+        }
+
+        public bool TryMove(Direction direction, Room currentRoom)
+        {
+            Coordinates newPosition = GetNewPosition(direction);
+
+            // Validate new position
+            if (newPosition.X < 0 || newPosition.X >= currentRoom.Width ||
+                newPosition.Y < 0 || newPosition.Y >= currentRoom.Height)
+            {
+                return false; // Out of bounds
+            }
+
+            if (!currentRoom.GetTileAt(newPosition).IsWalkable)
+            {
+                return false; // Tile not walkable
+            }
+
+            // Update position
+            Position = newPosition;
+            return true;
         }
     }
+
 }
 
