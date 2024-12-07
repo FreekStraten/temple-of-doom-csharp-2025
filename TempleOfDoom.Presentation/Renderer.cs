@@ -8,7 +8,7 @@ using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.Presentation
 {
-    public class Renderer
+    public static class Renderer
     {
         public static void RenderRoom(Room room, Player player)
         {
@@ -16,16 +16,35 @@ namespace TempleOfDoom.Presentation
             {
                 for (int x = 0; x < room.Width; x++)
                 {
-                    Coordinates currentCoordinates = new Coordinates(x, y);
-
-                    if (currentCoordinates.Equals(player.Position))
+                    var coords = new Coordinates(x, y);
+                    if (coords.Equals(player.Position))
                     {
-                        Console.Write("P ");
+                        Console.Write("X ");
                     }
                     else
                     {
-                        Console.Write($"{room.GetTileAt(currentCoordinates).Representation} ");
+                        Console.Write($"{room.GetTileAt(coords).Representation} ");
                     }
+                }
+                Console.WriteLine();
+            }
+        }
+
+        public static void RenderPlayerStatus(Player player, Room currentRoom)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Current Room: {currentRoom.Id}");
+            Console.WriteLine($"Lives: {player.Lives}");
+            Console.Write("Inventory: ");
+            if (player.Inventory.Count == 0)
+            {
+                Console.WriteLine("Empty");
+            }
+            else
+            {
+                foreach (var item in player.Inventory)
+                {
+                    Console.Write($"{item.Name}, ");
                 }
                 Console.WriteLine();
             }

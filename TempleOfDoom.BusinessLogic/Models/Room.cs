@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
-using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Struct;
+using TempleOfDoom.BusinessLogic.Models.Tile;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
@@ -24,10 +24,7 @@ namespace TempleOfDoom.BusinessLogic.Models
             Layout = new ITile[Height, Width];
         }
 
-        public ITile GetTileAt(Coordinates coordinates)
-        {
-            return Layout[coordinates.Y, coordinates.X];
-        }
+        public ITile GetTileAt(Coordinates coordinates) => Layout[coordinates.Y, coordinates.X];
 
         public void GenerateLayout()
         {
@@ -36,9 +33,24 @@ namespace TempleOfDoom.BusinessLogic.Models
                 for (int x = 0; x < Width; x++)
                 {
                     Layout[y, x] = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
-                        ? new WallTile()
+                        ? (ITile)new WallTile()
                         : new FloorTile();
                 }
+            }
+        }
+
+        public void PlaceItem(Coordinates position, IItem item)
+        {
+            Tile.Tile baseTile = (Tile.Tile)Layout[position.Y, position.X];
+            Layout[position.Y, position.X] = new ItemTileDecorator(baseTile, item);
+        }
+
+        public void RemoveItemAt(Coordinates position)
+        {
+            var tile = Layout[position.Y, position.X] as ItemTileDecorator;
+            if (tile != null)
+            {
+                Layout[position.Y, position.X] = tile.GetBaseTile();
             }
         }
     }

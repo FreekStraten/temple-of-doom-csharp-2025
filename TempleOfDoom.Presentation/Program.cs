@@ -34,6 +34,7 @@ namespace TempleOfDoom.Presentation
             {
                 Console.Clear();
                 Renderer.RenderRoom(gameService.CurrentRoom, gameService.Player);
+                Renderer.RenderPlayerStatus(gameService.Player, gameService.CurrentRoom);
 
                 ConsoleKeyInfo keyInfo = Console.ReadKey(true);
                 Direction? direction = InputHandler.GetDirectionFromInput(keyInfo.Key);

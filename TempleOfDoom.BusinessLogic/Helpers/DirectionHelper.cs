@@ -22,5 +22,4 @@ namespace TempleOfDoom.BusinessLogic.Helpers
             };
         }
     }
-
 }

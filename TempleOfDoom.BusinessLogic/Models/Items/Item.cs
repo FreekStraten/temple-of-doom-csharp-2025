@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Struct;
 
-namespace TempleOfDoom.BusinessLogic.Models
+namespace TempleOfDoom.BusinessLogic.Models.Items
 {
     public class Item
     {

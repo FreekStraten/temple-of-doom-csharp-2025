@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
+   
     public class DoorTile : Tile
     {
         // For now, a door is represented by a space to indicate openness.

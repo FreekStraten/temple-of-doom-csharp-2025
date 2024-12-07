@@ -9,6 +9,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
     using TempleOfDoom.BusinessLogic.Enum;
     using TempleOfDoom.BusinessLogic.Models;
     using TempleOfDoom.BusinessLogic.Models.Tile;
+    using TempleOfDoom.BusinessLogic.Struct;
     using TempleOfDoom.DataAccess;
 
     public static class LevelMapper
@@ -21,6 +22,16 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 Type = roomDto.Type
             };
             room.GenerateLayout();
+
+            if (roomDto.Items != null)
+            {
+                foreach (var itemDto in roomDto.Items)
+                {
+                    var item = ItemFactory.CreateItem(itemDto);
+                    room.PlaceItem(new Coordinates(itemDto.X, itemDto.Y), item);
+                }
+            }
+
             return room;
         }
 
