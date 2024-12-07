@@ -10,28 +10,37 @@ namespace TempleOfDoom.Presentation
     {
         public static void Main(string[] args)
         {
-            // Path to the JSON file
+            // Load level data
             string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
-
-            // Load and parse data
             JsonLevelLoader loader = new JsonLevelLoader();
             LevelDto levelData = loader.LoadLevel(filePath);
 
-            // Use the mapper to convert RoomDto to Room
-            Room firstRoom = LevelMapper.MapRoomDtoToRoom(levelData.Rooms[0]);
+            // Map all rooms first
+            Dictionary<int, Room> roomsById = new Dictionary<int, Room>();
+            foreach (var roomDto in levelData.Rooms)
+            {
+                Room room = LevelMapper.MapRoomDtoToRoom(roomDto);
+                roomsById[room.Id] = room;
+            }
+
+            // Apply connections to place door tiles
+            LevelMapper.ApplyConnectionsToRooms(levelData.Connections, roomsById);
+
+            // Create player
             Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
 
+            // For now, we start in the player's start room
+            Room currentRoom = roomsById[levelData.Player.StartRoomId];
+
             // Create GameService instance
-            GameService gameService = new GameService(firstRoom, player);
+            GameService gameService = new GameService(currentRoom, player);
 
             // Game loop
             bool isRunning = true;
             while (isRunning)
             {
                 Console.Clear();
-
-                // Render the room
-                Renderer.RenderRoom(firstRoom, player);
+                Renderer.RenderRoom(currentRoom, player);
 
                 // Get user input
                 ConsoleKeyInfo keyInfo = Console.ReadKey(true);
@@ -39,8 +48,11 @@ namespace TempleOfDoom.Presentation
 
                 if (direction.HasValue)
                 {
-                    // Delegate movement handling to GameService
-                    gameService.HandlePlayerMovement(direction.Value);
+                    // Move player
+                    bool moved = player.TryMove(direction.Value, currentRoom);
+
+                    // In the future, if player stands on door tile and moves through it, 
+                    // change `currentRoom` to the connected room.
                 }
                 else if (keyInfo.Key == ConsoleKey.Escape)
                 {
