@@ -9,10 +9,8 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
 {
     public interface IDoor
     {
-        // Returns a character representation depending on orientation
         char GetRepresentation(bool isHorizontal);
 
-        // Returns the color used to render this door
         ConsoleColor GetColor();
 
         // Skeleton methods for logic:

@@ -9,14 +9,14 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
     public class OpenOnOddDoor : IDoor
     {
-        public char GetRepresentation(bool isHorizontal)
-            => isHorizontal ? '=' : '|';
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
         public ConsoleColor GetColor() => ConsoleColor.Magenta;
+
         public bool IsOpen(Player player, Room currentRoom)
         {
-            // Placeholder: always closed
-            return false;
+            return player.Lives % 2 != 0;
         }
-        public void NotifyStateChange() { }
+
+        public void NotifyStateChange() { /* Not needed */ }
     }
 }

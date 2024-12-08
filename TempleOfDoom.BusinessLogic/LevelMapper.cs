@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace TempleOfDoom.BusinessLogic.Mappers
 {
+    using TempleOfDoom.BusinessLogic.Decorators;
     using TempleOfDoom.BusinessLogic.Enum;
     using TempleOfDoom.BusinessLogic.Factories;
     using TempleOfDoom.BusinessLogic.Interfaces;
@@ -50,50 +51,33 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 // Apply to north/south
                 if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
                 {
-                    // North's south wall is a door:
                     CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, connection.Doors);
-                    // South's north wall is a door:
                     CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, connection.Doors);
                 }
 
                 // East/West
                 if (connection.EAST.HasValue && connection.WEST.HasValue)
                 {
-                    // East's west wall is a door:
                     CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, connection.Doors);
-                    // West's east wall is a door:
                     CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, connection.Doors);
                 }
 
-                // In the future, handle UPPER/LOWER or portal similarly
+                // If in part 2 you have UPPER/LOWER or portals, you'd handle them here similarly.
             }
         }
 
         private static void CreateDoorTileForRoom(Room room, Direction direction, List<DoorDto> doorDtos)
         {
-            // Determine orientation based on direction
             bool isHorizontal = (direction == Direction.North || direction == Direction.South);
-
-            // If there are no doors defined, it's a default door
-            IDoor door;
-            if (doorDtos == null || doorDtos.Count == 0)
-            {
-                door = new DefaultDoor();
-            }
-            else if (doorDtos.Count == 1)
-            {
-                door = DoorFactory.CreateDoor(doorDtos[0]);
-            }
-            else
-            {
-                // If multiple door conditions apply, we could combine them via a Decorator pattern.
-                // For now, just take the first one:
-                // TODO: Implement a door decorator to combine multiple door conditions.
-                door = DoorFactory.CreateDoor(doorDtos[0]);
-            }
-
+            IDoor door = DoorFactory.CreateCompositeDoor(doorDtos);
             Coordinates doorPosition = GetDoorPosition(room, direction);
             room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
+
+            // If we might need to toggle doors later, register them
+            if (door is ToggleDoor || door is DoorDecorator)
+            {
+                room.RegisterDoor(door);
+            }
         }
 
         private static Coordinates GetDoorPosition(Room room, Direction direction)

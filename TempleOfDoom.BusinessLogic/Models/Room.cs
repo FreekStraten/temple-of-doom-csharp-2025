@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Struct;
 using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.BusinessLogic.Decorators;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
     public class Room
     {
+        private List<IDoor> _doors = new List<IDoor>();
         public int Id { get; set; }
         public string Type { get; set; }
         public int Width { get; set; }
@@ -53,5 +55,15 @@ namespace TempleOfDoom.BusinessLogic.Models
                 Layout[position.Y, position.X] = tile.GetBaseTile();
             }
         }
+
+        public void RegisterDoor(IDoor door)
+        {
+            if (!_doors.Contains(door))
+            {
+                _doors.Add(door);
+            }
+        }
+
+        public IEnumerable<IDoor> GetDoors() => _doors;
     }
 }

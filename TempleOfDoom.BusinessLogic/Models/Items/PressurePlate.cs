@@ -14,10 +14,18 @@ namespace TempleOfDoom.BusinessLogic.Models.Items
 
         public bool OnPlayerEnter(Player player)
         {
-            // Implement pressure plate logic here
-            // For now, just display a message
             Console.WriteLine("You stepped on a pressure plate.");
-            return false; // Do not remove
+
+            // Notify all toggleable doors in current room
+            if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
+            {
+                foreach (var door in GameService.Instance.CurrentRoom.GetDoors())
+                {
+                    door.NotifyStateChange();
+                }
+            }
+
+            return false;
         }
     }
 }

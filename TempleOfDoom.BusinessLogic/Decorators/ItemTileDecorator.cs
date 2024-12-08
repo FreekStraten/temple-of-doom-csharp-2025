@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 
-namespace TempleOfDoom.BusinessLogic
+namespace TempleOfDoom.BusinessLogic.Decorators
 {
-   public class ItemTileDecorator : Tile
+    public class ItemTileDecorator : Tile
     {
         private readonly Tile _baseTile;
         public IItem Item { get; }

@@ -9,14 +9,20 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
     public class ClosingGateDoor : IDoor
     {
-        public char GetRepresentation(bool isHorizontal)
-            => isHorizontal ? '=' : '|';
+        private bool _hasClosed = false;
+
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
         public ConsoleColor GetColor() => ConsoleColor.DarkMagenta;
+
         public bool IsOpen(Player player, Room currentRoom)
         {
-            // Placeholder logic
-            return true;
+            return !_hasClosed; // open until it closes once
         }
-        public void NotifyStateChange() { }
+
+        public void NotifyStateChange()
+        {
+            // After passing once, door closes forever
+            _hasClosed = true;
+        }
     }
 }

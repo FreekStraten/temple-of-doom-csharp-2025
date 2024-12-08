@@ -12,6 +12,9 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
         private readonly IDoor _door;
         private readonly bool _isHorizontal;
 
+        // Add a public property to expose the door
+        public IDoor Door => _door;
+
         public DoorTile(IDoor door, bool isHorizontal)
         {
             _door = door;
@@ -19,7 +22,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
         }
 
         public override string Representation => _door.GetRepresentation(_isHorizontal).ToString();
-        public override bool IsWalkable => _door.IsOpen(null, null);
+        public override bool IsWalkable => false;
 
         public ConsoleColor GetDoorColor() => _door.GetColor();
     }
