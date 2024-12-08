@@ -51,29 +51,30 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 // Apply to north/south
                 if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
                 {
-                    CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, connection.Doors);
-                    CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, connection.Doors);
+                    IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
+                    CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, door);
+                    CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, door);
                 }
 
                 // East/West
                 if (connection.EAST.HasValue && connection.WEST.HasValue)
                 {
-                    CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, connection.Doors);
-                    CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, connection.Doors);
+                    IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
+                    CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, door);
+                    CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, door);
                 }
 
                 // If in part 2 you have UPPER/LOWER or portals, you'd handle them here similarly.
             }
         }
 
-        private static void CreateDoorTileForRoom(Room room, Direction direction, List<DoorDto> doorDtos)
+        private static void CreateDoorTileForRoom(Room room, Direction direction, IDoor door)
         {
             bool isHorizontal = (direction == Direction.North || direction == Direction.South);
-            IDoor door = DoorFactory.CreateCompositeDoor(doorDtos);
             Coordinates doorPosition = GetDoorPosition(room, direction);
             room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
 
-            // If we might need to toggle doors later, register them
+            // Register if needed
             if (door is ToggleDoor || door is DoorDecorator)
             {
                 room.RegisterDoor(door);

@@ -15,7 +15,6 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
 
         // Skeleton methods for logic:
         bool IsOpen(Player player, Room currentRoom);
-        // We won't implement logic yet, just return true/false placeholders.
 
         // Some doors might need to be toggled externally (e.g., pressure plates)
         void NotifyStateChange();

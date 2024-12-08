@@ -159,26 +159,6 @@ public class GameService
         return false;
     }
 
-
-    private IDoor GetInnerDoor(DoorDecorator decorator, bool primary)
-    {
-        // We need a way to access the doors inside decorator.
-        // Let's assume we add a helper method in DoorDecorator (not shown above for brevity) 
-        // or we can store them as fields. 
-        // Since we have access to source, we can do:
-
-        // If we can't alter DoorDecorator, we can reflect or store them.
-        // Let's assume we add two public properties in DoorDecorator: PrimaryDoor and SecondaryDoor.
-
-        // After updating DoorDecorator:
-        // public IDoor PrimaryDoor => _primary;
-        // public IDoor SecondaryDoor => _secondary;
-
-        if (decorator == null) return null;
-        return primary ? (decorator.GetType().GetProperty("PrimaryDoor").GetValue(decorator) as IDoor)
-                       : (decorator.GetType().GetProperty("SecondaryDoor").GetValue(decorator) as IDoor);
-    }
-
     private Coordinates GetDoorPositionForDirection(Room room, Direction direction)
     {
         return direction switch
