@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TempleOfDoom.BusinessLogic;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Struct;
 
@@ -19,11 +20,29 @@ namespace TempleOfDoom.Presentation
                     var coords = new Coordinates(x, y);
                     if (coords.Equals(player.Position))
                     {
+                        // Player character
+                        Console.ForegroundColor = ColorManager.GetColorForPlayer();
                         Console.Write("X ");
+                        Console.ResetColor();
                     }
                     else
                     {
-                        Console.Write($"{room.GetTileAt(coords).Representation} ");
+                        var tile = room.GetTileAt(coords);
+
+                        // Check if there's an item on this tile
+                        if (tile is ItemTileDecorator itemTile)
+                        {
+                            Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
+                            Console.Write($"{itemTile.Representation} ");
+                            Console.ResetColor();
+                        }
+                        else
+                        {
+                            // Regular tile
+                            Console.ForegroundColor = ColorManager.GetColorForTile(tile);
+                            Console.Write($"{tile.Representation} ");
+                            Console.ResetColor();
+                        }
                     }
                 }
                 Console.WriteLine();
@@ -44,7 +63,9 @@ namespace TempleOfDoom.Presentation
             {
                 foreach (var item in player.Inventory)
                 {
+                    Console.ForegroundColor = ColorManager.GetColorForItem(item);
                     Console.Write($"{item.Name}, ");
+                    Console.ResetColor();
                 }
                 Console.WriteLine();
             }

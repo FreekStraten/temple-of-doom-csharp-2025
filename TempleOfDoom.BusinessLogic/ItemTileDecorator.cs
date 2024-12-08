@@ -28,11 +28,11 @@ namespace TempleOfDoom.BusinessLogic
             return Item.Name switch
             {
                 "Sankara Stone" => "S",
-                "Key(green)" => "G",
-                "Key(red)" => "R",
-                "BoobyTrap" => "B",
-                "Disappearing BoobyTrap" => "D",
-                "Pressure Plate" => "P",
+                "Key(green)" => "K",
+                "Key(red)" => "K",
+                "BoobyTrap" => "O",
+                "Disappearing BoobyTrap" => "@",
+                "Pressure Plate" => "T",
                 _ => "?"
             };
         }
