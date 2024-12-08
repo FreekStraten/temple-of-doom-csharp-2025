@@ -4,12 +4,14 @@ using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.BusinessLogic.Strategies;
 using TempleOfDoom.BusinessLogic.Struct;
 
 public class GameService
 {
-    private Dictionary<int, Room> _roomsById;
-    private Dictionary<int, Dictionary<Direction, int>> _roomConnections;
+    private readonly Dictionary<int, Room> _roomsById;
+    private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
+    private readonly IMovementStrategy _movementStrategy;
 
     private int _totalStones;
     private int _collectedStones;
@@ -22,119 +24,101 @@ public class GameService
 
     public bool IsGameOver => IsWin || IsLose;
 
-    public GameService(Room currentRoom, Player player, Dictionary<int, Room> roomsById, Dictionary<int, Dictionary<Direction, int>> roomConnections)
+    public GameService(Room currentRoom, Player player, Dictionary<int, Room> roomsById,
+                      Dictionary<int, Dictionary<Direction, int>> roomConnections,
+                      IMovementStrategy movementStrategy = null)
     {
         CurrentRoom = currentRoom;
         Player = player;
         _roomsById = roomsById;
         _roomConnections = roomConnections;
+        _movementStrategy = movementStrategy ?? new DefaultMovementStrategy();
 
         CountTotalStones();
     }
 
     private void CountTotalStones()
     {
-        _totalStones = 0;
-        foreach (var room in _roomsById.Values)
-        {
-            // Count Sankara Stones by checking for ItemTileDecorators with "Sankara Stone"
-            for (int y = 0; y < room.Height; y++)
-            {
-                for (int x = 0; x < room.Width; x++)
-                {
-                    if (room.Layout[y, x] is ItemTileDecorator itemTile && itemTile.Item is SankaraStone)
-                    {
-                        _totalStones++;
-                    }
-                }
-            }
-        }
+        _totalStones = _roomsById.Values
+            .SelectMany(room => room.Layout.Cast<ITile>())
+            .OfType<ItemTileDecorator>()
+            .Count(itemTile => itemTile.Item is SankaraStone);
     }
 
     public void HandlePlayerMovement(Direction direction)
     {
-        bool moved = Player.TryMove(direction, CurrentRoom);
+        Coordinates nextPos = _movementStrategy.GetNextPosition(Player, CurrentRoom, direction);
 
-        if (!moved)
+        if (IsPositionWalkable(nextPos))
         {
-            // Check if the attempted direction leads outside the current room
-            if (IsMoveOutsideRoom(direction))
-            {
-                ITile currentTile = CurrentRoom.GetTileAt(Player.Position);
-                if (currentTile is DoorTile)
-                {
-                    // Only attempt room transition if we actually have a corresponding connection in that direction
-                    if (AttemptRoomTransition(direction))
-                    {
-                        return;
-                    }
-                }
-            }
-            // If we get here, no valid room transition occurred.
-            // This means the player can't move in that direction and is stuck at current position.
+            Player.UpdatePosition(nextPos);
+            ProcessTile(Player.Position);
         }
-        else
+        else if (IsMoveOutsideRoom(direction) && CurrentTileIsDoor())
         {
-            // Player moved successfully inside the room.
-            // Check if they landed on an item and trigger item effects.
-            var tile = CurrentRoom.GetTileAt(Player.Position);
+            if (AttemptRoomTransition(direction))
+                return;
+        }
+    }
 
-            if (tile is ItemTileDecorator itemTile)
+    private bool IsPositionWalkable(Coordinates pos)
+    {
+        if (pos.X < 0 || pos.X >= CurrentRoom.Width || pos.Y < 0 || pos.Y >= CurrentRoom.Height)
+            return false;
+
+        return CurrentRoom.GetTileAt(pos).IsWalkable;
+    }
+
+    private void ProcessTile(Coordinates pos)
+    {
+        var tile = CurrentRoom.GetTileAt(pos);
+        if (tile is ItemTileDecorator itemTile)
+        {
+            bool shouldRemove = itemTile.Item.OnPlayerEnter(Player);
+
+            if (Player.Lives <= 0)
             {
-                bool shouldRemove = itemTile.Item.OnPlayerEnter(Player);
+                IsLose = true;
+                return;
+            }
 
-                // Check for lose condition (player's lives <= 0)
-                if (Player.Lives <= 0)
+            if (shouldRemove && itemTile.Item is SankaraStone)
+            {
+                _collectedStones++;
+                if (_collectedStones == _totalStones)
                 {
-                    IsLose = true;
+                    IsWin = true;
                     return;
                 }
+            }
 
-                // Check for sankara stone collection (win condition)
-                if (shouldRemove && itemTile.Item is SankaraStone)
-                {
-                    _collectedStones++;
-                    if (_collectedStones == _totalStones)
-                    {
-                        IsWin = true;
-                        return;
-                    }
-                }
-
-                if (shouldRemove)
-                {
-                    CurrentRoom.RemoveItemAt(Player.Position);
-                }
+            if (shouldRemove)
+            {
+                CurrentRoom.RemoveItemAt(pos);
             }
         }
     }
 
-    /// <summary>
-    /// Checks if moving in the specified direction would lead the player outside the current room boundaries.
-    /// This helps ensure that we only consider a room transition when the player is actually trying to move through the door opening.
-    /// </summary>
     private bool IsMoveOutsideRoom(Direction direction)
     {
         Coordinates nextPos = Player.GetNewPosition(direction);
-        // If nextPos is outside room boundaries, that implies player is trying to move beyond this room's walls.
-        if (nextPos.X < 0 || nextPos.X >= CurrentRoom.Width || nextPos.Y < 0 || nextPos.Y >= CurrentRoom.Height)
-        {
-            return true;
-        }
-        return false;
+        return nextPos.X < 0 || nextPos.X >= CurrentRoom.Width || nextPos.Y < 0 || nextPos.Y >= CurrentRoom.Height;
+    }
+
+    private bool CurrentTileIsDoor()
+    {
+        return CurrentRoom.GetTileAt(Player.Position) is DoorTile;
     }
 
     private bool AttemptRoomTransition(Direction direction)
     {
-        if (_roomConnections.TryGetValue(CurrentRoom.Id, out var connectionsForRoom))
+        if (_roomConnections.TryGetValue(CurrentRoom.Id, out var connectionsForRoom) &&
+            connectionsForRoom.TryGetValue(direction, out int nextRoomId))
         {
-            if (connectionsForRoom.TryGetValue(direction, out int nextRoomId))
-            {
-                Room nextRoom = _roomsById[nextRoomId];
-                Player.UpdatePosition(GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction)));
-                CurrentRoom = nextRoom;
-                return true;
-            }
+            Room nextRoom = _roomsById[nextRoomId];
+            Player.UpdatePosition(GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction)));
+            CurrentRoom = nextRoom;
+            return true;
         }
         return false;
     }
@@ -153,31 +137,13 @@ public class GameService
 
     private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
     {
-        int doorX, doorY;
-        switch (comingFromDirection)
+        return comingFromDirection switch
         {
-            case Direction.North:
-                doorX = nextRoom.Width / 2;
-                doorY = 0;
-                break;
-            case Direction.South:
-                doorX = nextRoom.Width / 2;
-                doorY = nextRoom.Height - 1;
-                break;
-            case Direction.West:
-                doorX = 0;
-                doorY = nextRoom.Height / 2;
-                break;
-            case Direction.East:
-                doorX = nextRoom.Width - 1;
-                doorY = nextRoom.Height / 2;
-                break;
-            default:
-                doorX = 1;
-                doorY = 1;
-                break;
-        }
-
-        return new Coordinates(doorX, doorY);
+            Direction.North => new Coordinates(nextRoom.Width / 2, 0),
+            Direction.South => new Coordinates(nextRoom.Width / 2, nextRoom.Height - 1),
+            Direction.West => new Coordinates(0, nextRoom.Height / 2),
+            Direction.East => new Coordinates(nextRoom.Width - 1, nextRoom.Height / 2),
+            _ => new Coordinates(1, 1)
+        };
     }
 }
