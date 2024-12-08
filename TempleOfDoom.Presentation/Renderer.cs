@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic;
 using TempleOfDoom.BusinessLogic.Models;
+using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.Presentation
@@ -34,6 +35,17 @@ namespace TempleOfDoom.Presentation
                             Console.Write($"{itemTile.Representation} ");
                             Console.ResetColor();
                         }
+                        else if (tile is DoorTile)
+                        {
+                            var doorTile = tile as DoorTile;
+                            // Cast doorTile._door if needed or add a method to DoorTile for color:
+                            // For simplicity, let's just call a method in DoorTile:
+                            // We'll store the door reference in DoorTile and have it provide color.
+                            var doorColor = doorTile.GetDoorColor();
+                            Console.ForegroundColor = doorColor;
+                            Console.Write($"{doorTile.Representation} ");
+                            Console.ResetColor();
+                        }
                         else
                         {
                             Console.ForegroundColor = ColorManager.GetColorForTile(tile);
@@ -45,6 +57,7 @@ namespace TempleOfDoom.Presentation
                 Console.WriteLine();
             }
         }
+
 
         public static void RenderPlayerStatus(Player player, Room currentRoom)
         {

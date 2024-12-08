@@ -8,7 +8,7 @@ using TempleOfDoom.BusinessLogic.Models.Item.Item;
 using TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.DataAccess;
 
-namespace TempleOfDoom.BusinessLogic
+namespace TempleOfDoom.BusinessLogic.Factories
 {
     public class DefaultItemFactory : IItemFactory
     {

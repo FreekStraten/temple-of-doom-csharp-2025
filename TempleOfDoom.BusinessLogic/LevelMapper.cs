@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 namespace TempleOfDoom.BusinessLogic.Mappers
 {
     using TempleOfDoom.BusinessLogic.Enum;
+    using TempleOfDoom.BusinessLogic.Factories;
     using TempleOfDoom.BusinessLogic.Interfaces;
     using TempleOfDoom.BusinessLogic.Models;
+    using TempleOfDoom.BusinessLogic.Models.Doors;
     using TempleOfDoom.BusinessLogic.Models.Tile;
     using TempleOfDoom.BusinessLogic.Struct;
     using TempleOfDoom.DataAccess;
@@ -45,14 +47,56 @@ namespace TempleOfDoom.BusinessLogic.Mappers
         {
             foreach (var connection in connections)
             {
-                if (connection.NORTH.HasValue) PlaceDoorTile(rooms[connection.NORTH.Value], Direction.South);
-                if (connection.SOUTH.HasValue) PlaceDoorTile(rooms[connection.SOUTH.Value], Direction.North);
-                if (connection.EAST.HasValue) PlaceDoorTile(rooms[connection.EAST.Value], Direction.West);
-                if (connection.WEST.HasValue) PlaceDoorTile(rooms[connection.WEST.Value], Direction.East);
+                // Apply to north/south
+                if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
+                {
+                    // North's south wall is a door:
+                    CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, connection.Doors);
+                    // South's north wall is a door:
+                    CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, connection.Doors);
+                }
+
+                // East/West
+                if (connection.EAST.HasValue && connection.WEST.HasValue)
+                {
+                    // East's west wall is a door:
+                    CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, connection.Doors);
+                    // West's east wall is a door:
+                    CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, connection.Doors);
+                }
+
+                // In the future, handle UPPER/LOWER or portal similarly
             }
         }
 
-        private static void PlaceDoorTile(Room room, Direction direction)
+        private static void CreateDoorTileForRoom(Room room, Direction direction, List<DoorDto> doorDtos)
+        {
+            // Determine orientation based on direction
+            bool isHorizontal = (direction == Direction.North || direction == Direction.South);
+
+            // If there are no doors defined, it's a default door
+            IDoor door;
+            if (doorDtos == null || doorDtos.Count == 0)
+            {
+                door = new DefaultDoor();
+            }
+            else if (doorDtos.Count == 1)
+            {
+                door = DoorFactory.CreateDoor(doorDtos[0]);
+            }
+            else
+            {
+                // If multiple door conditions apply, we could combine them via a Decorator pattern.
+                // For now, just take the first one:
+                // TODO: Implement a door decorator to combine multiple door conditions.
+                door = DoorFactory.CreateDoor(doorDtos[0]);
+            }
+
+            Coordinates doorPosition = GetDoorPosition(room, direction);
+            room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
+        }
+
+        private static Coordinates GetDoorPosition(Room room, Direction direction)
         {
             int doorX = 0, doorY = 0;
             switch (direction)
@@ -62,7 +106,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 case Direction.West: doorX = 0; doorY = room.Height / 2; break;
                 case Direction.East: doorX = room.Width - 1; doorY = room.Height / 2; break;
             }
-            room.Layout[doorY, doorX] = new DoorTile();
+            return new Coordinates(doorX, doorY);
         }
 
         public static Dictionary<int, Dictionary<Direction, int>> CreateRoomConnectionMap(List<ConnectionDto> connections)

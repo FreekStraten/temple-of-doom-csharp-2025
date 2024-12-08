@@ -1,5 +1,6 @@
 ﻿using TempleOfDoom.BusinessLogic;
 using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Factories;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Mappers;
 using TempleOfDoom.BusinessLogic.Models;

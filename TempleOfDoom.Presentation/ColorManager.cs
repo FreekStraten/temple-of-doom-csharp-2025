@@ -15,7 +15,7 @@ namespace TempleOfDoom.Presentation
         // Default colors
         private static readonly ConsoleColor DefaultTileColor = ConsoleColor.White;
         private static readonly ConsoleColor DefaultItemColor = ConsoleColor.White;
-        private static readonly ConsoleColor PlayerColor = ConsoleColor.Magenta; // Example for the player
+        private static readonly ConsoleColor PlayerColor = ConsoleColor.Blue; // Example for the player
 
         // Dictionaries for quick lookups
         private static Dictionary<string, ConsoleColor> tileColors = new Dictionary<string, ConsoleColor>
