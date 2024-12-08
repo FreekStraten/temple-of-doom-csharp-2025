@@ -32,6 +32,21 @@ namespace TempleOfDoom.Presentation
             bool isRunning = true;
             while (isRunning)
             {
+                if (gameService.IsGameOver)
+                {
+                    // Game ended (win or lose)
+                    Console.Clear();
+                    if (gameService.IsWin)
+                    {
+                        Renderer.RenderWinScreen();
+                    }
+                    else if (gameService.IsLose)
+                    {
+                        Renderer.RenderLoseScreen();
+                    }
+                    break;
+                }
+
                 Console.Clear();
                 Renderer.RenderRoom(gameService.CurrentRoom, gameService.Player);
                 Renderer.RenderPlayerStatus(gameService.Player, gameService.CurrentRoom);
@@ -48,6 +63,11 @@ namespace TempleOfDoom.Presentation
                     isRunning = false;
                 }
             }
+
+            // Wait for a key press before closing
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey(true);
         }
     }
+
 }

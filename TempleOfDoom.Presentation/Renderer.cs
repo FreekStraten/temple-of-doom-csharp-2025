@@ -20,7 +20,6 @@ namespace TempleOfDoom.Presentation
                     var coords = new Coordinates(x, y);
                     if (coords.Equals(player.Position))
                     {
-                        // Player character
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
                         Console.Write("X ");
                         Console.ResetColor();
@@ -29,7 +28,6 @@ namespace TempleOfDoom.Presentation
                     {
                         var tile = room.GetTileAt(coords);
 
-                        // Check if there's an item on this tile
                         if (tile is ItemTileDecorator itemTile)
                         {
                             Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
@@ -38,7 +36,6 @@ namespace TempleOfDoom.Presentation
                         }
                         else
                         {
-                            // Regular tile
                             Console.ForegroundColor = ColorManager.GetColorForTile(tile);
                             Console.Write($"{tile.Representation} ");
                             Console.ResetColor();
@@ -70,5 +67,26 @@ namespace TempleOfDoom.Presentation
                 Console.WriteLine();
             }
         }
+
+        public static void RenderWinScreen()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("****************************************************");
+            Console.WriteLine("                   YOU WIN!                         ");
+            Console.WriteLine("You have collected all the Sankara Stones!          ");
+            Console.WriteLine("****************************************************");
+            Console.ResetColor();
+        }
+
+        public static void RenderLoseScreen()
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("****************************************************");
+            Console.WriteLine("                   YOU LOSE!                        ");
+            Console.WriteLine("You ran out of lives. Better luck next time.        ");
+            Console.WriteLine("****************************************************");
+            Console.ResetColor();
+        }
     }
+
 }
