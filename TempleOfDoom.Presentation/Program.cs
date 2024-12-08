@@ -1,5 +1,6 @@
 ﻿using TempleOfDoom.BusinessLogic;
 using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Mappers;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.DataAccess;
@@ -14,10 +15,12 @@ namespace TempleOfDoom.Presentation
             JsonLevelLoader loader = new JsonLevelLoader();
             LevelDto levelData = loader.LoadLevel(filePath);
 
+            IItemFactory itemFactory = new DefaultItemFactory();
+
             Dictionary<int, Room> roomsById = new Dictionary<int, Room>();
             foreach (var roomDto in levelData.Rooms)
             {
-                Room room = LevelMapper.MapRoomDtoToRoom(roomDto);
+                Room room = LevelMapper.MapRoomDtoToRoom(roomDto, itemFactory);
                 roomsById[room.Id] = room;
             }
 
@@ -69,5 +72,4 @@ namespace TempleOfDoom.Presentation
             Console.ReadKey(true);
         }
     }
-
 }

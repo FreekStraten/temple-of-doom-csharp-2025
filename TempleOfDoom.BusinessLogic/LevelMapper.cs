@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 namespace TempleOfDoom.BusinessLogic.Mappers
 {
     using TempleOfDoom.BusinessLogic.Enum;
+    using TempleOfDoom.BusinessLogic.Interfaces;
     using TempleOfDoom.BusinessLogic.Models;
     using TempleOfDoom.BusinessLogic.Models.Tile;
     using TempleOfDoom.BusinessLogic.Struct;
@@ -14,7 +15,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
 
     public static class LevelMapper
     {
-        public static Room MapRoomDtoToRoom(RoomDto roomDto)
+        public static Room MapRoomDtoToRoom(RoomDto roomDto, IItemFactory itemFactory)
         {
             var room = new Room(roomDto.Width, roomDto.Height)
             {
@@ -27,7 +28,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             {
                 foreach (var itemDto in roomDto.Items)
                 {
-                    var item = ItemFactory.CreateItem(itemDto);
+                    var item = itemFactory.CreateItem(itemDto);
                     room.PlaceItem(new Coordinates(itemDto.X, itemDto.Y), item);
                 }
             }
