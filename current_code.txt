@@ -1,0 +1,1394 @@
+// Consolidated Code Extracted on 10-12-2024 16:59:50
+
+// File: TempleOfDoom.Presentation\ColorManager.cs
+namespace TempleOfDoom.Presentation
+{
+    public static class ColorManager
+    {
+        // If you want, these could be loaded from a config file or a JSON in the future.
+        // Default colors
+        private static readonly ConsoleColor DefaultTileColor = ConsoleColor.White;
+        private static readonly ConsoleColor DefaultItemColor = ConsoleColor.White;
+        private static readonly ConsoleColor PlayerColor = ConsoleColor.Blue; // Example for the player
+        // Dictionaries for quick lookups
+        private static Dictionary<string, ConsoleColor> tileColors = new Dictionary<string, ConsoleColor>
+        {
+            // Map tile type names to colors
+            { nameof(WallTile), ConsoleColor.Yellow },
+            { nameof(FloorTile), ConsoleColor.Gray },
+            { nameof(DoorTile), ConsoleColor.DarkGray }
+            // Add more tile types here in the future
+        };
+        private static Dictionary<string, ConsoleColor> itemColors = new Dictionary<string, ConsoleColor>
+        {
+            // Map item "type" names or known names to colors
+            // We'll handle keys separately since they contain their color in the name.
+            { "Sankara Stone", ConsoleColor.DarkYellow }, // approximation for "orange"
+            { "BoobyTrap", ConsoleColor.DarkRed },
+            { "Disappearing BoobyTrap", ConsoleColor.Red },
+            { "Pressure Plate", ConsoleColor.Cyan }
+            // Keys will be handled dynamically
+        };
+        public static ConsoleColor GetColorForTile(ITile tile)
+        {
+            string tileTypeName = tile.GetType().Name;
+            if (tileColors.ContainsKey(tileTypeName))
+            {
+                return tileColors[tileTypeName];
+            }
+            return DefaultTileColor;
+        }
+        public static ConsoleColor GetColorForItem(IItem item)
+        {
+            // Keys have color embedded in their name, e.g. "Key(green)", "Key(red)"
+            if (item.Name.StartsWith("Key("))
+            {
+                return GetKeyColor(item.Name);
+            }
+            if (itemColors.ContainsKey(item.Name))
+            {
+                return itemColors[item.Name];
+            }
+            return DefaultItemColor;
+        }
+        public static ConsoleColor GetColorForPlayer()
+        {
+            return PlayerColor;
+        }
+        private static ConsoleColor GetKeyColor(string keyName)
+        {
+            // keyName format: "Key(color)"
+            // Extract the color from between parentheses
+            int start = keyName.IndexOf('(') + 1;
+            int end = keyName.IndexOf(')');
+            if (start > 0 && end > start)
+            {
+                string colorStr = keyName.Substring(start, end - start).ToLower();
+                return colorStr switch
+                {
+                    "red" => ConsoleColor.Red,
+                    "green" => ConsoleColor.Green,
+                    "blue" => ConsoleColor.Blue, // If you ever have a blue key
+                    _ => DefaultItemColor
+                };
+            }
+            return DefaultItemColor;
+        }
+    }
+}
+
+// File: TempleOfDoom.Presentation\InputHandler.cs
+namespace TempleOfDoom.Presentation
+{
+    public static class InputHandler
+    {
+        public static Direction? GetDirectionFromInput(ConsoleKey key)
+        {
+            return key switch
+            {
+                ConsoleKey.UpArrow or ConsoleKey.W => Direction.North,
+                ConsoleKey.DownArrow or ConsoleKey.S => Direction.South,
+                ConsoleKey.LeftArrow or ConsoleKey.A => Direction.West,
+                ConsoleKey.RightArrow or ConsoleKey.D => Direction.East,
+                _ => null
+            };
+        }
+    }
+}
+
+// File: TempleOfDoom.Presentation\Program.cs
+namespace TempleOfDoom.Presentation
+{
+    public class Program
+    {
+        private static bool StartGame = false;
+        public static void Main(string[] args)
+        {
+            if (StartGame)
+            {
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
+                JsonLevelLoader loader = new JsonLevelLoader();
+                LevelDto levelData = loader.LoadLevel(filePath);
+                IItemFactory itemFactory = new DefaultItemFactory();
+                Dictionary<int, Room> roomsById = new Dictionary<int, Room>();
+                foreach (var roomDto in levelData.Rooms)
+                {
+                    Room room = LevelMapper.MapRoomDtoToRoom(roomDto, itemFactory);
+                    roomsById[room.Id] = room;
+                }
+                LevelMapper.ApplyConnectionsToRooms(levelData.Connections, roomsById);
+                var roomConnections = LevelMapper.CreateRoomConnectionMap(levelData.Connections);
+                Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
+                Room currentRoom = roomsById[levelData.Player.StartRoomId];
+                GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
+                bool isRunning = true;
+                while (isRunning)
+                {
+                    if (gameService.IsGameOver)
+                    {
+                        // Game ended (win or lose)
+                        Console.Clear();
+                        if (gameService.IsWin)
+                        {
+                            Renderer.RenderWinScreen();
+                        }
+                        else if (gameService.IsLose)
+                        {
+                            Renderer.RenderLoseScreen();
+                        }
+                        break;
+                    }
+                    Console.Clear();
+                    Renderer.RenderRoom(gameService.CurrentRoom, gameService.Player);
+                    Renderer.RenderPlayerStatus(gameService.Player, gameService.CurrentRoom);
+                    ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                    Direction? direction = InputHandler.GetDirectionFromInput(keyInfo.Key);
+                    if (direction.HasValue)
+                    {
+                        gameService.HandlePlayerMovement(direction.Value);
+                    }
+                    else if (keyInfo.Key == ConsoleKey.Escape)
+                    {
+                        isRunning = false;
+                    }
+                }
+                // Wait for a key press before closing
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey(true);
+            }
+            else
+            {
+                ExtractAndOpenCode();
+            }
+        }
+        private static void ExtractAndOpenCode()
+        {
+            // Define the project root path. Adjust this path as needed to get to the solution folder
+            string projectRootPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
+            // Define the output file path. For example, place it in a "Output" folder within the project directory.
+            string outputFilePath = Path.Combine(projectRootPath, "current_code.txt");
+            // Use the CodeExtractor class to perform the extraction
+            string[] includedDirectories = new string[] { "TempleOfDoom.Presentation", "TempleOfDoom.BusinessLogic", "TempleOfDoom.DataAccess" };
+            CodeExtractor.ExtractCodeToTxt(projectRootPath, outputFilePath, includedDirectories);
+            // Use the FileOpener class to open the output file
+            FileOpener.OpenFile(outputFilePath);
+        }
+    }
+}
+
+// File: TempleOfDoom.Presentation\Renderer.cs
+namespace TempleOfDoom.Presentation
+{
+    public static class Renderer
+    {
+        public static void RenderRoom(Room room, Player player)
+        {
+            for (int y = 0; y < room.Height; y++)
+            {
+                for (int x = 0; x < room.Width; x++)
+                {
+                    var coords = new Coordinates(x, y);
+                    if (coords.Equals(player.Position))
+                    {
+                        Console.ForegroundColor = ColorManager.GetColorForPlayer();
+                        Console.Write("X ");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        var tile = room.GetTileAt(coords);
+                        if (tile is ItemTileDecorator itemTile)
+                        {
+                            Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
+                            Console.Write($"{itemTile.Representation} ");
+                            Console.ResetColor();
+                        }
+                        else if (tile is DoorTile)
+                        {
+                            var doorTile = tile as DoorTile;
+                            // Cast doorTile._door if needed or add a method to DoorTile for color:
+                            // For simplicity, let's just call a method in DoorTile:
+                            // We'll store the door reference in DoorTile and have it provide color.
+                            var doorColor = doorTile.GetDoorColor();
+                            Console.ForegroundColor = doorColor;
+                            Console.Write($"{doorTile.Representation} ");
+                            Console.ResetColor();
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ColorManager.GetColorForTile(tile);
+                            Console.Write($"{tile.Representation} ");
+                            Console.ResetColor();
+                        }
+                    }
+                }
+                Console.WriteLine();
+            }
+        }
+        public static void RenderPlayerStatus(Player player, Room currentRoom)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Current Room: {currentRoom.Id}");
+            Console.WriteLine($"Lives: {player.Lives}");
+            Console.Write("Inventory: ");
+            if (player.Inventory.Count == 0)
+            {
+                Console.WriteLine("Empty");
+            }
+            else
+            {
+                foreach (var item in player.Inventory)
+                {
+                    Console.ForegroundColor = ColorManager.GetColorForItem(item);
+                    Console.Write($"{item.Name}, ");
+                    Console.ResetColor();
+                }
+                Console.WriteLine();
+            }
+        }
+        public static void RenderWinScreen()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("****************************************************");
+            Console.WriteLine("                   YOU WIN!                         ");
+            Console.WriteLine("You have collected all the Sankara Stones!          ");
+            Console.WriteLine("****************************************************");
+            Console.ResetColor();
+        }
+        public static void RenderLoseScreen()
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("****************************************************");
+            Console.WriteLine("                   YOU LOSE!                        ");
+            Console.WriteLine("You ran out of lives. Better luck next time.        ");
+            Console.WriteLine("****************************************************");
+            Console.ResetColor();
+        }
+    }
+}
+
+// File: TempleOfDoom.Presentation\RemoveLater\CodeExtractor.cs
+namespace TempleOfDoom.BusinessLogic
+{
+    public static class CodeExtractor
+    {
+        /// <summary>
+        /// Extracts code from the specified directories and consolidates it into a single text file.
+        /// </summary>
+        /// <param name="projectRootPath">The root path of the project.</param>
+        /// <param name="outputFilePath">The output file path where the consolidated code will be saved.</param>
+        /// <param name="includedDirectories">An array of directories to include in the extraction.</param>
+        public static void ExtractCodeToTxt(string projectRootPath, string outputFilePath, string[] includedDirectories)
+        {
+            try
+            {
+                // Ensure the output directory exists
+                string outputDirectory = Path.GetDirectoryName(outputFilePath);
+                if (!Directory.Exists(outputDirectory))
+                {
+                    Directory.CreateDirectory(outputDirectory);
+                    Console.WriteLine($"Created output directory: {outputDirectory}");
+                }
+                // Initialize or clear the output file and write the header
+                {
+                    writer.WriteLine("// Consolidated Code Extracted on " + DateTime.Now);
+                    writer.WriteLine();
+                }
+                // Define directories to exclude
+                var excludedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "bin",
+                    "obj",
+                    ".git",
+                    ".vs",
+                    "Properties",
+                    "Resources" // Add other directories as needed
+                };
+                // Retrieve all .cs files from the specified included directories
+                var csFiles = includedDirectories.SelectMany(dir => Directory.GetFiles(Path.Combine(projectRootPath, dir), "*.cs", SearchOption.AllDirectories))
+                    .Where(file => !excludedDirectories.Any(exDir =>
+                        Path.GetFullPath(file)
+                            .Split(Path.DirectorySeparatorChar)
+                            .Contains(exDir, StringComparer.OrdinalIgnoreCase)));
+                if (!csFiles.Any())
+                {
+                    Console.WriteLine("No .cs files found in the specified directories.");
+                    return;
+                }
+                Console.WriteLine($"Found {csFiles.Count()} .cs files. Processing...");
+                foreach (var file in csFiles)
+                {
+                    try
+                    {
+                        // Read all lines from the current file
+                        var lines = File.ReadAllLines(file);
+                        // Filter out 'using' directives
+                        var filteredLines = lines.Where(line => !Regex.IsMatch(line.Trim(), @"^using\s+")).ToList();
+                        // Optionally, remove empty lines for cleaner output
+                        filteredLines = filteredLines.Where(line => !string.IsNullOrWhiteSpace(line)).ToList();
+                        // Prepare content to append
+                        var header = $"// File: {Path.GetRelativePath(projectRootPath, file)}";
+                        var content = string.Join(Environment.NewLine, filteredLines);
+                        // Append to the output file
+                        {
+                            writer.WriteLine(header);
+                            writer.WriteLine(content);
+                            writer.WriteLine(); // Add a newline for separation
+                        }
+                        Console.WriteLine($"Processed: {Path.GetRelativePath(projectRootPath, file)}");
+                    }
+                    catch (Exception exFile)
+                    {
+                        Console.WriteLine($"Error processing file {file}: {exFile.Message}");
+                    }
+                }
+                Console.WriteLine($"Extraction complete. Check the '{outputFilePath}' file.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred during extraction: {ex.Message}");
+            }
+        }
+    }
+}
+
+// File: TempleOfDoom.Presentation\RemoveLater\FileOpener.cs
+namespace TempleOfDoom.Presentation.RemoveLater
+{
+    public static class FileOpener
+    {
+        /// <summary>
+        /// Opens the specified file in the default application.
+        /// </summary>
+        /// <param name="filePath">The full path to the file to open.</param>
+        public static void OpenFile(string filePath)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting to open file: {filePath}");
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo()
+                {
+                    FileName = filePath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to open the file: {ex.Message}");
+            }
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\GameService.cs
+public class GameService
+{
+    public static GameService Instance { get; private set; }
+    private readonly Dictionary<int, Room> _roomsById;
+    private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
+    private readonly IMovementStrategy _movementStrategy;
+    private int _totalStones;
+    private int _collectedStones;
+    public Room CurrentRoom { get; private set; }
+    public Player Player { get; private set; }
+    public bool IsWin { get; private set; }
+    public bool IsLose { get; private set; }
+    public bool IsGameOver => IsWin || IsLose;
+    public GameService(Room currentRoom, Player player, Dictionary<int, Room> roomsById,
+                      Dictionary<int, Dictionary<Direction, int>> roomConnections,
+                      IMovementStrategy movementStrategy = null)
+    {
+        Instance = this;
+        CurrentRoom = currentRoom;
+        Player = player;
+        _roomsById = roomsById;
+        _roomConnections = roomConnections;
+        _movementStrategy = movementStrategy ?? new DefaultMovementStrategy();
+        CountTotalStones();
+    }
+    private void CountTotalStones()
+    {
+        _totalStones = _roomsById.Values
+            .SelectMany(room => room.Layout.Cast<ITile>())
+            .OfType<ItemTileDecorator>()
+            .Count(itemTile => itemTile.Item is SankaraStone);
+    }
+    public void HandlePlayerMovement(Direction direction)
+    {
+        Coordinates nextPos = _movementStrategy.GetNextPosition(Player, CurrentRoom, direction);
+        if (IsPositionWalkable(nextPos))
+        {
+            Player.UpdatePosition(nextPos);
+            ProcessTile(Player.Position);
+        }
+        else if (IsMoveOutsideRoom(direction) && CurrentTileIsDoor())
+        {
+            if (AttemptRoomTransition(direction))
+                return;
+        }
+    }
+    private bool IsPositionWalkable(Coordinates pos)
+    {
+        if (pos.X < 0 || pos.X >= CurrentRoom.Width || pos.Y < 0 || pos.Y >= CurrentRoom.Height)
+            return false;
+        ITile tile = CurrentRoom.GetTileAt(pos);
+        if (tile is DoorTile doorTile)
+        {
+            // Now we have access to Player and CurrentRoom here.
+            return doorTile.Door.IsOpen(Player, CurrentRoom);
+        }
+        return tile.IsWalkable;
+    }
+    private void ProcessTile(Coordinates pos)
+    {
+        var tile = CurrentRoom.GetTileAt(pos);
+        if (tile is ItemTileDecorator itemTile)
+        {
+            bool shouldRemove = itemTile.Item.OnPlayerEnter(Player);
+            if (Player.Lives <= 0)
+            {
+                IsLose = true;
+                return;
+            }
+            if (shouldRemove && itemTile.Item is SankaraStone)
+            {
+                _collectedStones++;
+                if (_collectedStones == _totalStones)
+                {
+                    IsWin = true;
+                    return;
+                }
+            }
+            if (shouldRemove)
+            {
+                CurrentRoom.RemoveItemAt(pos);
+            }
+        }
+    }
+    private bool IsMoveOutsideRoom(Direction direction)
+    {
+        Coordinates nextPos = Player.GetNewPosition(direction);
+        return nextPos.X < 0 || nextPos.X >= CurrentRoom.Width || nextPos.Y < 0 || nextPos.Y >= CurrentRoom.Height;
+    }
+    private bool CurrentTileIsDoor()
+    {
+        var tile = CurrentRoom.GetTileAt(Player.Position);
+        return tile is DoorTile;
+    }
+    private bool AttemptRoomTransition(Direction direction)
+    {
+        if (_roomConnections.TryGetValue(CurrentRoom.Id, out var connectionsForRoom) &&
+            connectionsForRoom.TryGetValue(direction, out int nextRoomId))
+        {
+            // Identify door position in current room and handle closing gate
+            Coordinates doorPos = GetDoorPositionForDirection(CurrentRoom, direction);
+            var doorTile = CurrentRoom.GetTileAt(doorPos) as DoorTile;
+            // If we passed through a closing gate door, close it now
+            if (doorTile != null && ContainsDoorOfType<ClosingGateDoor>(doorTile.Door))
+            {
+                // After moving through, notify the door to close
+                doorTile.Door.NotifyStateChange();
+            }
+            Room nextRoom = _roomsById[nextRoomId];
+            Player.UpdatePosition(GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction)));
+            CurrentRoom = nextRoom;
+            return true;
+        }
+        return false;
+    }
+    private bool ContainsDoorOfType<T>(IDoor door) where T : IDoor
+    {
+        if (door is T)
+            return true;
+        if (door is DoorDecorator dec)
+        {
+            // Directly check the primary and secondary doors, no reflection needed:
+            return ContainsDoorOfType<T>(dec.PrimaryDoor) || ContainsDoorOfType<T>(dec.SecondaryDoor);
+        }
+        return false;
+    }
+    private Coordinates GetDoorPositionForDirection(Room room, Direction direction)
+    {
+        return direction switch
+        {
+            Direction.North => new Coordinates(room.Width / 2, 0),
+            Direction.South => new Coordinates(room.Width / 2, room.Height - 1),
+            Direction.West => new Coordinates(0, room.Height / 2),
+            Direction.East => new Coordinates(room.Width - 1, room.Height / 2),
+            _ => new Coordinates(1, 1)
+        };
+    }
+    private Direction OppositeDirection(Direction direction)
+    {
+        return direction switch
+        {
+            Direction.North => Direction.South,
+            Direction.South => Direction.North,
+            Direction.East => Direction.West,
+            Direction.West => Direction.East,
+            _ => direction
+        };
+    }
+    private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
+    {
+        return comingFromDirection switch
+        {
+            Direction.North => new Coordinates(nextRoom.Width / 2, 0),
+            Direction.South => new Coordinates(nextRoom.Width / 2, nextRoom.Height - 1),
+            Direction.West => new Coordinates(0, nextRoom.Height / 2),
+            Direction.East => new Coordinates(nextRoom.Width - 1, nextRoom.Height / 2),
+            _ => new Coordinates(1, 1)
+        };
+    }
+    public void NotifyRoomDoorsToggled()
+    {
+        // For now, all toggle doors in the current room have been notified by PressurePlate directly.
+        // This method can do additional handling if needed.
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\LevelMapper.cs
+namespace TempleOfDoom.BusinessLogic.Mappers
+{
+    public static class LevelMapper
+    {
+        public static Room MapRoomDtoToRoom(RoomDto roomDto, IItemFactory itemFactory)
+        {
+            var room = new Room(roomDto.Width, roomDto.Height)
+            {
+                Id = roomDto.Id,
+                Type = roomDto.Type
+            };
+            room.GenerateLayout();
+            if (roomDto.Items != null)
+            {
+                foreach (var itemDto in roomDto.Items)
+                {
+                    var item = itemFactory.CreateItem(itemDto);
+                    room.PlaceItem(new Coordinates(itemDto.X, itemDto.Y), item);
+                }
+            }
+            return room;
+        }
+        public static Player MapPlayerDtoToPlayer(PlayerDto playerDto)
+        {
+            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives);
+        }
+        public static void ApplyConnectionsToRooms(List<ConnectionDto> connections, Dictionary<int, Room> rooms)
+        {
+            foreach (var connection in connections)
+            {
+                // Apply to north/south
+                if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
+                {
+                    IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
+                    CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, door);
+                    CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, door);
+                }
+                // East/West
+                if (connection.EAST.HasValue && connection.WEST.HasValue)
+                {
+                    IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
+                    CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, door);
+                    CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, door);
+                }
+                // If in part 2 you have UPPER/LOWER or portals, you'd handle them here similarly.
+            }
+        }
+        private static void CreateDoorTileForRoom(Room room, Direction direction, IDoor door)
+        {
+            bool isHorizontal = (direction == Direction.North || direction == Direction.South);
+            Coordinates doorPosition = GetDoorPosition(room, direction);
+            room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
+            // Register if needed
+            if (door is ToggleDoor || door is DoorDecorator)
+            {
+                room.RegisterDoor(door);
+            }
+        }
+        private static Coordinates GetDoorPosition(Room room, Direction direction)
+        {
+            int doorX = 0, doorY = 0;
+            switch (direction)
+            {
+                case Direction.North: doorX = room.Width / 2; doorY = 0; break;
+                case Direction.South: doorX = room.Width / 2; doorY = room.Height - 1; break;
+                case Direction.West: doorX = 0; doorY = room.Height / 2; break;
+                case Direction.East: doorX = room.Width - 1; doorY = room.Height / 2; break;
+            }
+            return new Coordinates(doorX, doorY);
+        }
+        public static Dictionary<int, Dictionary<Direction, int>> CreateRoomConnectionMap(List<ConnectionDto> connections)
+        {
+            var map = new Dictionary<int, Dictionary<Direction, int>>();
+            foreach (var conn in connections)
+            {
+                if (conn.NORTH.HasValue && conn.SOUTH.HasValue)
+                {
+                    AddConnection(map, conn.NORTH.Value, Direction.South, conn.SOUTH.Value);
+                    AddConnection(map, conn.SOUTH.Value, Direction.North, conn.NORTH.Value);
+                }
+                if (conn.EAST.HasValue && conn.WEST.HasValue)
+                {
+                    AddConnection(map, conn.EAST.Value, Direction.West, conn.WEST.Value);
+                    AddConnection(map, conn.WEST.Value, Direction.East, conn.EAST.Value);
+                }
+            }
+            return map;
+        }
+        private static void AddConnection(Dictionary<int, Dictionary<Direction, int>> map, int fromRoomId, Direction dir, int toRoomId)
+        {
+            if (!map.ContainsKey(fromRoomId))
+                map[fromRoomId] = new Dictionary<Direction, int>();
+            map[fromRoomId][dir] = toRoomId;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Decorators\DoorDecorator.cs
+namespace TempleOfDoom.BusinessLogic.Decorators
+{
+    public class DoorDecorator : IDoor
+    {
+        private readonly IDoor _primary;
+        private readonly IDoor _secondary;
+        public DoorDecorator(IDoor primary, IDoor secondary)
+        {
+            _primary = primary;
+            _secondary = secondary;
+        }
+        public IDoor PrimaryDoor => _primary;
+        public IDoor SecondaryDoor => _secondary;
+        public char GetRepresentation(bool isHorizontal) => _primary.GetRepresentation(isHorizontal);
+        public ConsoleColor GetColor() => _primary.GetColor();
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            return _primary.IsOpen(player, currentRoom) && _secondary.IsOpen(player, currentRoom);
+        }
+        public void NotifyStateChange()
+        {
+            _primary.NotifyStateChange();
+            _secondary.NotifyStateChange();
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Decorators\ItemTileDecorator.cs
+namespace TempleOfDoom.BusinessLogic.Decorators
+{
+    public class ItemTileDecorator : Tile
+    {
+        private readonly Tile _baseTile;
+        public IItem Item { get; }
+        public ItemTileDecorator(Tile baseTile, IItem item)
+        {
+            _baseTile = baseTile;
+            Item = item;
+        }
+        public override string Representation => GetItemRepresentation();
+        public override bool IsWalkable => _baseTile.IsWalkable;
+        private string GetItemRepresentation()
+        {
+            // Represent items with their first letter or a specific symbol
+            return Item.Name switch
+            {
+                "Sankara Stone" => "S",
+                "Key(green)" => "K",
+                "Key(red)" => "K",
+                "BoobyTrap" => "O",
+                "Disappearing BoobyTrap" => "@",
+                "Pressure Plate" => "T",
+                _ => "?"
+            };
+        }
+        public ITile GetBaseTile() => _baseTile;
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Enum\Direction.cs
+namespace TempleOfDoom.BusinessLogic.Enum
+{
+    public enum Direction
+    {
+        North,
+        South,
+        East,
+        West
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Factories\DefaultItemFactory.cs
+namespace TempleOfDoom.BusinessLogic.Factories
+{
+    public class DefaultItemFactory : IItemFactory
+    {
+        public IItem CreateItem(ItemDto itemDto)
+        {
+            return itemDto.Type.ToLower() switch
+            {
+                "sankara stone" => new SankaraStone(),
+                "key" => new KeyItem(itemDto.Color),
+                "boobytrap" => new BoobyTrap(itemDto.Damage ?? 1),
+                "disappearing boobytrap" => new DisappearingBoobyTrap(itemDto.Damage ?? 1),
+                "pressure plate" => new PressurePlate(),
+                _ => throw new ArgumentException($"Unknown item type: {itemDto.Type}")
+            };
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Factories\DoorFactory.cs
+namespace TempleOfDoom.BusinessLogic.Factories
+{
+    public static class DoorFactory
+    {
+        public static IDoor CreateDoor(DoorDto doorDto)
+        {
+            return doorDto.Type.ToLower() switch
+            {
+                "colored" => new ColoredDoor(doorDto.Color),
+                "toggle" => new ToggleDoor(),
+                "closing gate" => new ClosingGateDoor(),
+                "open on odd" => new OpenOnOddDoor(),
+                "open on stones in room" => new OpenOnStonesInRoomDoor(doorDto.NoOfStones ?? 0),
+                _ => new DefaultDoor()
+            };
+        }
+        public static IDoor CreateCompositeDoor(List<DoorDto> doorDtos)
+        {
+            if (doorDtos == null || doorDtos.Count == 0)
+            {
+                return new DefaultDoor();
+            }
+            if (doorDtos.Count == 1)
+            {
+                return CreateDoor(doorDtos[0]);
+            }
+            IDoor result = CreateDoor(doorDtos[0]);
+            for (int i = 1; i < doorDtos.Count; i++)
+            {
+                IDoor next = CreateDoor(doorDtos[i]);
+                result = new DoorDecorator(result, next);
+            }
+            return result;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Helpers\DirectionHelper.cs
+namespace TempleOfDoom.BusinessLogic.Helpers
+{
+    public static class DirectionHelper
+    {
+        public static Coordinates ToCoordinates(Direction direction)
+        {
+            return direction switch
+            {
+                Direction.North => new Coordinates(0, -1),
+                Direction.South => new Coordinates(0, 1),
+                Direction.West => new Coordinates(-1, 0),
+                Direction.East => new Coordinates(1, 0),
+                _ => new Coordinates(0, 0)
+            };
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IDoor.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IDoor
+    {
+        char GetRepresentation(bool isHorizontal);
+        ConsoleColor GetColor();
+        // Skeleton methods for logic:
+        bool IsOpen(Player player, Room currentRoom);
+        // Some doors might need to be toggled externally (e.g., pressure plates)
+        void NotifyStateChange();
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IItem.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IItem
+    {
+        string Name { get; }
+        bool IsCollectible { get; }
+        bool OnPlayerEnter(Player player);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IItemFactory.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IItemFactory
+    {
+        IItem CreateItem(ItemDto itemDto);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IMovementStrategy.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IMovementStrategy
+    {
+        /// <summary>
+        /// Calculates the next position for the player given a direction.
+        /// </summary>
+        Coordinates GetNextPosition(Player player, Room currentRoom, Direction direction);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\ITile.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface ITile
+    {
+        string Representation { get; }
+        bool IsWalkable { get; }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Player.cs
+namespace TempleOfDoom.BusinessLogic.Models
+{
+    public class Player
+    {
+        public Coordinates Position { get; private set; }
+        public int Lives { get; set; }
+        public List<IItem> Inventory { get; } = new List<IItem>();
+        public Player(int x, int y, int lives = 3)
+        {
+            Position = new Coordinates(x, y);
+            Lives = lives;
+        }
+        public Coordinates GetNewPosition(Direction direction)
+        {
+            Coordinates movement = DirectionHelper.ToCoordinates(direction);
+            return Position + movement;
+        }
+        public void UpdatePosition(Coordinates newPosition)
+        {
+            Position = newPosition;
+        }
+        public bool TryMove(Direction direction, Room currentRoom)
+        {
+            Coordinates newPosition = GetNewPosition(direction);
+            // Check boundaries
+            if (newPosition.X < 0 || newPosition.X >= currentRoom.Width ||
+                newPosition.Y < 0 || newPosition.Y >= currentRoom.Height)
+            {
+                // Can't move inside this room; might trigger AttemptRoomTransition if standing on a door.
+                return false;
+            }
+            if (!currentRoom.GetTileAt(newPosition).IsWalkable)
+            {
+                return false;
+            }
+            Position = newPosition;
+            return true;
+        }
+        public void CollectItem(IItem item)
+        {
+            if (item.IsCollectible)
+            {
+                Inventory.Add(item);
+            }
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Room.cs
+namespace TempleOfDoom.BusinessLogic.Models
+{
+    public class Room
+    {
+        private List<IDoor> _doors = new List<IDoor>();
+        public int Id { get; set; }
+        public string Type { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public ITile[,] Layout { get; private set; }
+        public Room(int width, int height)
+        {
+            Width = width;
+            Height = height;
+            Layout = new ITile[Height, Width];
+        }
+        public ITile GetTileAt(Coordinates coordinates) => Layout[coordinates.Y, coordinates.X];
+        public void GenerateLayout()
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    Layout[y, x] = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+                        ? (ITile)new WallTile()
+                        : new FloorTile();
+                }
+            }
+        }
+        public void PlaceItem(Coordinates position, IItem item)
+        {
+            Tile.Tile baseTile = (Tile.Tile)Layout[position.Y, position.X];
+            Layout[position.Y, position.X] = new ItemTileDecorator(baseTile, item);
+        }
+        public void RemoveItemAt(Coordinates position)
+        {
+            var tile = Layout[position.Y, position.X] as ItemTileDecorator;
+            if (tile != null)
+            {
+                Layout[position.Y, position.X] = tile.GetBaseTile();
+            }
+        }
+        public void RegisterDoor(IDoor door)
+        {
+            if (!_doors.Contains(door))
+            {
+                _doors.Add(door);
+            }
+        }
+        public IEnumerable<IDoor> GetDoors() => _doors;
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Strategies\DefaultMovementStrategy.cs
+namespace TempleOfDoom.BusinessLogic.Strategies
+{
+    public class DefaultMovementStrategy : IMovementStrategy
+    {
+        public Coordinates GetNextPosition(Player player, Room currentRoom, Direction direction)
+        {
+            Coordinates movement = DirectionHelper.ToCoordinates(direction);
+            Coordinates newPosition = player.Position + movement;
+            // Boundary checks and collision checks can be done here or delegated
+            // to another service if needed.
+            return newPosition;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Structs\Coordinates.cs
+namespace TempleOfDoom.BusinessLogic.Struct
+{
+    public struct Coordinates
+    {
+        public int X { get; }
+        public int Y { get; }
+        public Coordinates(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+        // Add useful methods and operators
+        public static Coordinates operator +(Coordinates a, Coordinates b)
+        {
+            return new Coordinates(a.X + b.X, a.Y + b.Y);
+        }
+        public override string ToString()
+        {
+            return $"({X}, {Y})";
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ClosingGateDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class ClosingGateDoor : IDoor
+    {
+        private bool _hasClosed = false;
+        public char GetRepresentation(bool isHorizontal) => 'n';
+        public ConsoleColor GetColor() => ConsoleColor.DarkMagenta;
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            return !_hasClosed; // open until it closes once
+        }
+        public void NotifyStateChange()
+        {
+            // After passing once, door closes forever
+            _hasClosed = true;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ColoredDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class ColoredDoor : IDoor
+    {
+        private readonly string _color;
+        public ColoredDoor(string color)
+        {
+            _color = color.ToLower();
+        }
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public ConsoleColor GetColor()
+        {
+            return _color switch
+            {
+                "red" => ConsoleColor.Red,
+                "green" => ConsoleColor.Green,
+                _ => ConsoleColor.DarkGray
+            };
+        }
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            // Open if player has a key of this color
+            return player.Inventory.Any(i => i is KeyItem key && key.Color.ToLower() == _color);
+        }
+        public void NotifyStateChange() { /* Not needed for colored door */ }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\DefaultDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class DefaultDoor : IDoor
+    {
+        public char GetRepresentation(bool isHorizontal) => ' ';
+        public ConsoleColor GetColor() => ConsoleColor.White;
+        public bool IsOpen(Player player, Room currentRoom) => true;
+        public void NotifyStateChange() { /* No op for default door */ }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnOddDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class OpenOnOddDoor : IDoor
+    {
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public ConsoleColor GetColor() => ConsoleColor.Magenta;
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            return player.Lives % 2 != 0;
+        }
+        public void NotifyStateChange() { /* Not needed */ }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnStonesInRoomDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class OpenOnStonesInRoomDoor : IDoor
+    {
+        private readonly int _requiredStones;
+        public OpenOnStonesInRoomDoor(int requiredStones)
+        {
+            _requiredStones = requiredStones;
+        }
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public ConsoleColor GetColor() => ConsoleColor.Blue;
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            int stonesInRoom = 0;
+            for (int y = 0; y < currentRoom.Height; y++)
+            {
+                for (int x = 0; x < currentRoom.Width; x++)
+                {
+                    var tile = currentRoom.GetTileAt(new Struct.Coordinates(x, y));
+                    if (tile is ItemTileDecorator itemDec && itemDec.Item is SankaraStone)
+                    {
+                        stonesInRoom++;
+                    }
+                }
+            }
+            return stonesInRoom == _requiredStones;
+        }
+        public void NotifyStateChange() { /* Not needed */ }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\PressurePlateDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class PressurePlateDoor : IDoor
+    {
+        public char GetRepresentation(bool isHorizontal) => '⊥';
+        public ConsoleColor GetColor() => ConsoleColor.Cyan;
+        public bool IsOpen(Player player, Room currentRoom)
+        {
+            // Placeholder: maybe always open for now
+            return true;
+        }
+        public void NotifyStateChange() { /* Not used yet */ }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ToggleDoor.cs
+namespace TempleOfDoom.BusinessLogic.Models.Doors
+{
+    public class ToggleDoor : IDoor
+    {
+        private bool _isOpen = false; // default state closed
+        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public ConsoleColor GetColor() => ConsoleColor.Yellow;
+        public bool IsOpen(Player player, Room currentRoom) => _isOpen;
+        public void NotifyStateChange()
+        {
+            _isOpen = !_isOpen;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\BoobyTrap.cs
+namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+{
+    public class BoobyTrap : IItem
+    {
+        public int Damage { get; }
+        public string Name => "BoobyTrap";
+        public bool IsCollectible => false;
+        public BoobyTrap(int damage)
+        {
+            Damage = damage;
+        }
+        public bool OnPlayerEnter(Player player)
+        {
+            player.Lives -= Damage;
+            return false; // Do not remove
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\DisappearingBoobyTrap.cs
+namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+{
+    public class DisappearingBoobyTrap : IItem
+    {
+        public int Damage { get; }
+        public string Name => "Disappearing BoobyTrap";
+        public bool IsCollectible => false;
+        public DisappearingBoobyTrap(int damage)
+        {
+            Damage = damage;
+        }
+        public bool OnPlayerEnter(Player player)
+        {
+            player.Lives -= Damage;
+            return true; // Remove after activation
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\Item.cs
+namespace TempleOfDoom.BusinessLogic.Models.Items
+{
+    public class Item
+    {
+        public Coordinates Position { get; set; }
+        public string Type { get; set; }
+        public Item(int x, int y, string type)
+        {
+            Position = new Coordinates(x, y);
+            Type = type;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\KeyItem.cs
+namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+{
+    public class KeyItem : IItem
+    {
+        public string Color { get; }
+        public string Name => $"Key({Color})";
+        public bool IsCollectible => true;
+        public KeyItem(string color)
+        {
+            Color = color;
+        }
+        public bool OnPlayerEnter(Player player)
+        {
+            player.CollectItem(this);
+            return true; // Remove after collection
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\PressurePlate.cs
+namespace TempleOfDoom.BusinessLogic.Models.Items
+{
+    public class PressurePlate : IItem
+    {
+        public string Name => "Pressure Plate";
+        public bool IsCollectible => false;
+        public bool OnPlayerEnter(Player player)
+        {
+            Console.WriteLine("You stepped on a pressure plate.");
+            // Notify all toggleable doors in current room
+            if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
+            {
+                foreach (var door in GameService.Instance.CurrentRoom.GetDoors())
+                {
+                    door.NotifyStateChange();
+                }
+            }
+            return false;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\SankaraStone.cs
+namespace TempleOfDoom.BusinessLogic.Models.Items
+{
+    public class SankaraStone : IItem
+    {
+        public string Name => "Sankara Stone";
+        public bool IsCollectible => true;
+        public bool OnPlayerEnter(Player player)
+        {
+            player.CollectItem(this);
+            return true; // Remove after collection
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Tile\DoorTile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public class DoorTile : Tile
+    {
+        private readonly IDoor _door;
+        private readonly bool _isHorizontal;
+        // Add a public property to expose the door
+        public IDoor Door => _door;
+        public DoorTile(IDoor door, bool isHorizontal)
+        {
+            _door = door;
+            _isHorizontal = isHorizontal;
+        }
+        public override string Representation => _door.GetRepresentation(_isHorizontal).ToString();
+        public override bool IsWalkable => false;
+        public ConsoleColor GetDoorColor() => _door.GetColor();
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Tile\FloorTile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public class FloorTile : Tile
+    {
+        public override string Representation => ".";
+        public override bool IsWalkable => true;
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Tile\Tile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public abstract class Tile : ITile
+    {
+        public abstract string Representation { get; }
+        public abstract bool IsWalkable { get; }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Tile\WallTile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public class WallTile : Tile
+    {
+        public override string Representation => "#";
+        public override bool IsWalkable => false;
+    }
+}
+
+// File: TempleOfDoom.DataAccess\ConnectionDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class ConnectionDto
+    {
+        public int? NORTH { get; set; }
+        public int? SOUTH { get; set; }
+        public int? EAST { get; set; }
+        public int? WEST { get; set; }
+        public List<DoorDto> Doors { get; set; }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\DoorDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class DoorDto
+    {
+        public string Type { get; set; }
+        public string Color { get; set; } // Nullable for optional properties
+        public int? NoOfStones { get; set; } // Nullable for optional properties
+    }
+}
+
+// File: TempleOfDoom.DataAccess\ItemDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class ItemDto
+    {
+        public string Type { get; set; }
+        public int? Damage { get; set; } // Nullable for optional properties
+        public string Color { get; set; } // Nullable for optional properties
+        public int X { get; set; }
+        public int Y { get; set; }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\JsonLevelLoader.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class JsonLevelLoader
+    {
+        public LevelDto LoadLevel(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException("JSON file not found.", filePath);
+            }
+            string jsonContent = File.ReadAllText(filePath);
+            // Configure deserialization options
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true // Makes JSON property names case-insensitive
+            };
+            LevelDto levelData = JsonSerializer.Deserialize<LevelDto>(jsonContent, options);
+            return levelData;
+        }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\LevelDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class LevelDto
+    {
+        public List<RoomDto> Rooms { get; set; }
+        public List<ConnectionDto> Connections { get; set; }
+        public PlayerDto Player { get; set; }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\PlayerDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class PlayerDto
+    {
+        public int StartRoomId { get; set; }
+        public int StartX { get; set; }
+        public int StartY { get; set; }
+        public int Lives { get; set; }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\RoomDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class RoomDto
+    {
+        public int Id { get; set; }
+        public string Type { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public List<ItemDto> Items { get; set; }
+    }
+}
+

@@ -34,5 +34,4 @@ namespace TempleOfDoom.BusinessLogic.Decorators
             _secondary.NotifyStateChange();
         }
     }
-
 }
