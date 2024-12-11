@@ -8,7 +8,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
     public class FloorTile : Tile
     {
-        public override string Representation => ".";
+        public override string Representation => " ";
         public override bool IsWalkable => true;
     }
 

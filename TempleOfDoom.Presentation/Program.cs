@@ -19,6 +19,7 @@ namespace TempleOfDoom.Presentation
         {
             if (StartGame)
             {
+                Console.OutputEncoding = System.Text.Encoding.UTF8;
 
                 string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
                 JsonLevelLoader loader = new JsonLevelLoader();
@@ -40,6 +41,8 @@ namespace TempleOfDoom.Presentation
                 Room currentRoom = roomsById[levelData.Player.StartRoomId];
 
                 GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
+
+                Console.OutputEncoding = System.Text.Encoding.UTF8;
 
                 bool isRunning = true;
                 while (isRunning)

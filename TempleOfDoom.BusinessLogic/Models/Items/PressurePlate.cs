@@ -14,8 +14,6 @@ namespace TempleOfDoom.BusinessLogic.Models.Items
 
         public bool OnPlayerEnter(Player player)
         {
-            Console.WriteLine("You stepped on a pressure plate.");
-
             // Notify all toggleable doors in current room
             if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
             {

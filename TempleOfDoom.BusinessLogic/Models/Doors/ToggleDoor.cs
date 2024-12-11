@@ -11,7 +11,8 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
     {
         private bool _isOpen = false; // default state closed
 
-        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public char GetRepresentation(bool isHorizontal) => '\u22A5';
+
         public ConsoleColor GetColor() => ConsoleColor.Yellow;
 
         public bool IsOpen(Player player, Room currentRoom) => _isOpen;
