@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 10-12-2024 16:59:50
+// Consolidated Code Extracted on 11-12-2024 19:17:35
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -106,6 +106,7 @@ namespace TempleOfDoom.Presentation
         {
             if (StartGame)
             {
+                Console.OutputEncoding = System.Text.Encoding.UTF8;
                 string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
                 JsonLevelLoader loader = new JsonLevelLoader();
                 LevelDto levelData = loader.LoadLevel(filePath);
@@ -121,6 +122,7 @@ namespace TempleOfDoom.Presentation
                 Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
                 Room currentRoom = roomsById[levelData.Player.StartRoomId];
                 GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
+                Console.OutputEncoding = System.Text.Encoding.UTF8;
                 bool isRunning = true;
                 while (isRunning)
                 {
@@ -383,167 +385,94 @@ namespace TempleOfDoom.Presentation.RemoveLater
 // File: TempleOfDoom.BusinessLogic\GameService.cs
 public class GameService
 {
+    // Public for demonstration; better to inject or pass through constructor
+    public static Dictionary<int, Room> RoomsById { get; set; }
     public static GameService Instance { get; private set; }
-    private readonly Dictionary<int, Room> _roomsById;
-    private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
-    private readonly IMovementStrategy _movementStrategy;
-    private int _totalStones;
-    private int _collectedStones;
+    private IGameStateManager _gameStateManager;
+    private IPlayerMovementController _playerMovementController;
+    private IItemCollector _itemCollector;
     public Room CurrentRoom { get; private set; }
     public Player Player { get; private set; }
-    public bool IsWin { get; private set; }
-    public bool IsLose { get; private set; }
-    public bool IsGameOver => IsWin || IsLose;
-    public GameService(Room currentRoom, Player player, Dictionary<int, Room> roomsById,
-                      Dictionary<int, Dictionary<Direction, int>> roomConnections,
-                      IMovementStrategy movementStrategy = null)
+    public bool IsWin => _gameStateManager.IsWin;
+    public bool IsLose => _gameStateManager.IsLose;
+    public bool IsGameOver => _gameStateManager.IsGameOver;
+    public GameService(
+        Room currentRoom,
+        Player player,
+        Dictionary<int, Room> roomsById,
+        Dictionary<int, Dictionary<Direction, int>> roomConnections)
     {
         Instance = this;
+        RoomsById = roomsById;
+        _gameStateManager = new GameStateManager();
+        // Setup services
+        IDoorService doorService = new DoorService();
+        IItemCollector itemCollector = new ItemCollector();
+        itemCollector.InitializeTotalStones(RoomsById.Values);
+        itemCollector.SetGameStateManager(_gameStateManager);
+        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService);
+        IMovementStrategy movementStrategy = new DefaultMovementStrategy();
+        IPlayerMovementController movementController = new PlayerMovementController(movementStrategy, roomTransitionService, doorService, itemCollector, _gameStateManager);
+        _itemCollector = itemCollector;
+        _playerMovementController = movementController;
         CurrentRoom = currentRoom;
         Player = player;
-        _roomsById = roomsById;
-        _roomConnections = roomConnections;
-        _movementStrategy = movementStrategy ?? new DefaultMovementStrategy();
-        CountTotalStones();
-    }
-    private void CountTotalStones()
-    {
-        _totalStones = _roomsById.Values
-            .SelectMany(room => room.Layout.Cast<ITile>())
-            .OfType<ItemTileDecorator>()
-            .Count(itemTile => itemTile.Item is SankaraStone);
     }
     public void HandlePlayerMovement(Direction direction)
     {
-        Coordinates nextPos = _movementStrategy.GetNextPosition(Player, CurrentRoom, direction);
-        if (IsPositionWalkable(nextPos))
-        {
-            Player.UpdatePosition(nextPos);
-            ProcessTile(Player.Position);
-        }
-        else if (IsMoveOutsideRoom(direction) && CurrentTileIsDoor())
-        {
-            if (AttemptRoomTransition(direction))
-                return;
-        }
+        if (IsGameOver) return;
+        _playerMovementController.TryMovePlayer(Player, CurrentRoom, direction);
     }
-    private bool IsPositionWalkable(Coordinates pos)
+    public void SetCurrentRoom(Room room)
     {
-        if (pos.X < 0 || pos.X >= CurrentRoom.Width || pos.Y < 0 || pos.Y >= CurrentRoom.Height)
-            return false;
-        ITile tile = CurrentRoom.GetTileAt(pos);
-        if (tile is DoorTile doorTile)
-        {
-            // Now we have access to Player and CurrentRoom here.
-            return doorTile.Door.IsOpen(Player, CurrentRoom);
-        }
-        return tile.IsWalkable;
+        CurrentRoom = room;
     }
-    private void ProcessTile(Coordinates pos)
+}
+
+// File: TempleOfDoom.BusinessLogic\ItemCollector.cs
+namespace TempleOfDoom.BusinessLogic
+{
+    public class ItemCollector : IItemCollector
     {
-        var tile = CurrentRoom.GetTileAt(pos);
-        if (tile is ItemTileDecorator itemTile)
+        private int _totalStones;
+        private int _collectedStones;
+        private IGameStateManager _gameStateManager;
+        public void InitializeTotalStones(IEnumerable<Room> rooms)
         {
-            bool shouldRemove = itemTile.Item.OnPlayerEnter(Player);
-            if (Player.Lives <= 0)
+            _totalStones = rooms.SelectMany(r => r.Layout.Cast<ITile>())
+                .OfType<ItemTileDecorator>()
+                .Count(t => t.Item is SankaraStone);
+        }
+        public void SetGameStateManager(IGameStateManager gameStateManager)
+        {
+            _gameStateManager = gameStateManager;
+        }
+        public bool HandleItemInteraction(Player player, Room room)
+        {
+            var tile = room.GetTileAt(player.Position);
+            if (tile is ItemTileDecorator itemTile)
             {
-                IsLose = true;
-                return;
-            }
-            if (shouldRemove && itemTile.Item is SankaraStone)
-            {
-                _collectedStones++;
-                if (_collectedStones == _totalStones)
+                bool shouldRemove = itemTile.Item.OnPlayerEnter(player);
+                if (player.Lives <= 0)
                 {
-                    IsWin = true;
-                    return;
+                    _gameStateManager?.MarkLose();
+                    return true;
+                }
+                if (shouldRemove)
+                {
+                    if (itemTile.Item is SankaraStone)
+                    {
+                        _collectedStones++;
+                        if (_collectedStones == _totalStones)
+                        {
+                            _gameStateManager?.MarkWin();
+                        }
+                    }
+                    room.RemoveItemAt(player.Position);
                 }
             }
-            if (shouldRemove)
-            {
-                CurrentRoom.RemoveItemAt(pos);
-            }
+            return false;
         }
-    }
-    private bool IsMoveOutsideRoom(Direction direction)
-    {
-        Coordinates nextPos = Player.GetNewPosition(direction);
-        return nextPos.X < 0 || nextPos.X >= CurrentRoom.Width || nextPos.Y < 0 || nextPos.Y >= CurrentRoom.Height;
-    }
-    private bool CurrentTileIsDoor()
-    {
-        var tile = CurrentRoom.GetTileAt(Player.Position);
-        return tile is DoorTile;
-    }
-    private bool AttemptRoomTransition(Direction direction)
-    {
-        if (_roomConnections.TryGetValue(CurrentRoom.Id, out var connectionsForRoom) &&
-            connectionsForRoom.TryGetValue(direction, out int nextRoomId))
-        {
-            // Identify door position in current room and handle closing gate
-            Coordinates doorPos = GetDoorPositionForDirection(CurrentRoom, direction);
-            var doorTile = CurrentRoom.GetTileAt(doorPos) as DoorTile;
-            // If we passed through a closing gate door, close it now
-            if (doorTile != null && ContainsDoorOfType<ClosingGateDoor>(doorTile.Door))
-            {
-                // After moving through, notify the door to close
-                doorTile.Door.NotifyStateChange();
-            }
-            Room nextRoom = _roomsById[nextRoomId];
-            Player.UpdatePosition(GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction)));
-            CurrentRoom = nextRoom;
-            return true;
-        }
-        return false;
-    }
-    private bool ContainsDoorOfType<T>(IDoor door) where T : IDoor
-    {
-        if (door is T)
-            return true;
-        if (door is DoorDecorator dec)
-        {
-            // Directly check the primary and secondary doors, no reflection needed:
-            return ContainsDoorOfType<T>(dec.PrimaryDoor) || ContainsDoorOfType<T>(dec.SecondaryDoor);
-        }
-        return false;
-    }
-    private Coordinates GetDoorPositionForDirection(Room room, Direction direction)
-    {
-        return direction switch
-        {
-            Direction.North => new Coordinates(room.Width / 2, 0),
-            Direction.South => new Coordinates(room.Width / 2, room.Height - 1),
-            Direction.West => new Coordinates(0, room.Height / 2),
-            Direction.East => new Coordinates(room.Width - 1, room.Height / 2),
-            _ => new Coordinates(1, 1)
-        };
-    }
-    private Direction OppositeDirection(Direction direction)
-    {
-        return direction switch
-        {
-            Direction.North => Direction.South,
-            Direction.South => Direction.North,
-            Direction.East => Direction.West,
-            Direction.West => Direction.East,
-            _ => direction
-        };
-    }
-    private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
-    {
-        return comingFromDirection switch
-        {
-            Direction.North => new Coordinates(nextRoom.Width / 2, 0),
-            Direction.South => new Coordinates(nextRoom.Width / 2, nextRoom.Height - 1),
-            Direction.West => new Coordinates(0, nextRoom.Height / 2),
-            Direction.East => new Coordinates(nextRoom.Width - 1, nextRoom.Height / 2),
-            _ => new Coordinates(1, 1)
-        };
-    }
-    public void NotifyRoomDoorsToggled()
-    {
-        // For now, all toggle doors in the current room have been notified by PressurePlate directly.
-        // This method can do additional handling if needed.
     }
 }
 
@@ -808,6 +737,30 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     }
 }
 
+// File: TempleOfDoom.BusinessLogic\Interfaces\IDoorService.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IDoorService
+    {
+        bool CanPassThroughDoor(Player player, Room room, Direction direction);
+        void AfterPassingDoor(Room room, Direction direction);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IGameStateManager.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IGameStateManager
+    {
+        bool IsWin { get; }
+        bool IsLose { get; }
+        bool IsGameOver { get; }
+        void MarkWin();
+        void MarkLose();
+        // Possibly notify about life changes, stone count changes, etc.
+    }
+}
+
 // File: TempleOfDoom.BusinessLogic\Interfaces\IItem.cs
 namespace TempleOfDoom.BusinessLogic.Interfaces
 {
@@ -816,6 +769,18 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
         string Name { get; }
         bool IsCollectible { get; }
         bool OnPlayerEnter(Player player);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IItemCollector.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IItemCollector
+    {
+        void InitializeTotalStones(IEnumerable<Room> rooms);
+        bool HandleItemInteraction(Player player, Room room);
+        // Possibly a method to check if all stones collected and notify state manager
+        void SetGameStateManager(IGameStateManager gameStateManager);
     }
 }
 
@@ -840,6 +805,29 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     }
 }
 
+// File: TempleOfDoom.BusinessLogic\Interfaces\IPlayerMovementController.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IPlayerMovementController
+    {
+        /// <summary>
+        /// Attempt to move the player in the given direction inside the current room.
+        /// Returns true if moved inside the room, false if not.
+        /// If movement is not possible inside the room, might trigger room transition.
+        /// </summary>
+        bool TryMovePlayer(Player player, Room currentRoom, Direction direction);
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Interfaces\IRoomTransitionService.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    public interface IRoomTransitionService
+    {
+        bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom);
+    }
+}
+
 // File: TempleOfDoom.BusinessLogic\Interfaces\ITile.cs
 namespace TempleOfDoom.BusinessLogic.Interfaces
 {
@@ -847,6 +835,19 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         string Representation { get; }
         bool IsWalkable { get; }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Manager\GameStateManager.cs
+namespace TempleOfDoom.BusinessLogic.Manager
+{
+    public class GameStateManager : IGameStateManager
+    {
+        public bool IsWin { get; private set; }
+        public bool IsLose { get; private set; }
+        public bool IsGameOver => IsWin || IsLose;
+        public void MarkWin() => IsWin = true;
+        public void MarkLose() => IsLose = true;
     }
 }
 
@@ -953,6 +954,181 @@ namespace TempleOfDoom.BusinessLogic.Models
     }
 }
 
+// File: TempleOfDoom.BusinessLogic\Services\DoorService.cs
+namespace TempleOfDoom.BusinessLogic.Services
+{
+    public class DoorService : IDoorService
+    {
+        // Check if door in given direction can be opened
+        public bool CanPassThroughDoor(Player player, Room room, Direction direction)
+        {
+            var doorPos = GetDoorPositionForDirection(room, direction);
+            var tile = room.GetTileAt(doorPos) as DoorTile;
+            if (tile == null) return true; // No door tile means open?
+            return tile.Door.IsOpen(player, room);
+        }
+        public void AfterPassingDoor(Room room, Direction direction)
+        {
+            var doorPos = GetDoorPositionForDirection(room, direction);
+            var doorTile = room.GetTileAt(doorPos) as DoorTile;
+            if (doorTile != null && ContainsDoorOfType<ClosingGateDoor>(doorTile.Door))
+            {
+                doorTile.Door.NotifyStateChange();
+            }
+        }
+        private Coordinates GetDoorPositionForDirection(Room room, Direction direction)
+        {
+            return direction switch
+            {
+                Direction.North => new Coordinates(room.Width / 2, 0),
+                Direction.South => new Coordinates(room.Width / 2, room.Height - 1),
+                Direction.West => new Coordinates(0, room.Height / 2),
+                Direction.East => new Coordinates(room.Width - 1, room.Height / 2),
+                _ => new Coordinates(1, 1)
+            };
+        }
+        private bool ContainsDoorOfType<T>(IDoor door) where T : IDoor
+        {
+            if (door is T) return true;
+            if (door is DoorDecorator dec)
+            {
+                return ContainsDoorOfType<T>(dec.PrimaryDoor) || ContainsDoorOfType<T>(dec.SecondaryDoor);
+            }
+            return false;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Services\PlayerMovementController.cs
+namespace TempleOfDoom.BusinessLogic.Services
+{
+    public class PlayerMovementController : IPlayerMovementController
+    {
+        private readonly IMovementStrategy _movementStrategy;
+        private readonly IRoomTransitionService _roomTransitionService;
+        private readonly IDoorService _doorService;
+        private readonly IItemCollector _itemCollector;
+        private readonly IGameStateManager _gameStateManager;
+        public PlayerMovementController(
+            IMovementStrategy movementStrategy,
+            IRoomTransitionService roomTransitionService,
+            IDoorService doorService,
+            IItemCollector itemCollector,
+            IGameStateManager gameStateManager)
+        {
+            _movementStrategy = movementStrategy;
+            _roomTransitionService = roomTransitionService;
+            _doorService = doorService;
+            _itemCollector = itemCollector;
+            _gameStateManager = gameStateManager;
+        }
+        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction)
+        {
+            if (_gameStateManager.IsGameOver) return false;
+            Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
+            // Check boundaries
+            if (IsInsideRoom(nextPos, currentRoom))
+            {
+                // Check if walkable or if it's a door
+                if (IsPositionWalkable(currentRoom, player, nextPos))
+                {
+                    player.UpdatePosition(nextPos);
+                    _itemCollector.HandleItemInteraction(player, currentRoom); // may set win/lose
+                    return true;
+                }
+                return false;
+            }
+            else
+            {
+                // Outside room boundaries, check if door allows passing
+                if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
+                {
+                    // Attempt to transition to next room
+                    if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
+                    {
+                        // On entering the next room, handle item again (if standing on item)
+                        _itemCollector.HandleItemInteraction(player, nextRoom);
+                        GameService.Instance.SetCurrentRoom(nextRoom);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        private bool IsInsideRoom(Coordinates pos, Room room)
+        {
+            return pos.X >= 0 && pos.X < room.Width && pos.Y >= 0 && pos.Y < room.Height;
+        }
+        private bool IsPositionWalkable(Room room, Player player, Coordinates pos)
+        {
+            var tile = room.GetTileAt(pos);
+            if (tile is DoorTile doorTile)
+            {
+                return doorTile.Door.IsOpen(player, room);
+            }
+            return tile.IsWalkable;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Services\RoomTransitionService.cs
+namespace TempleOfDoom.BusinessLogic.Services
+{
+    public class RoomTransitionService : IRoomTransitionService
+    {
+        private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
+        private readonly IDoorService _doorService;
+        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService)
+        {
+            _roomConnections = roomConnections;
+            _doorService = doorService;
+        }
+        public bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom)
+        {
+            nextRoom = null;
+            if (!_roomConnections.TryGetValue(currentRoom.Id, out var connForRoom))
+                return false;
+            if (!connForRoom.TryGetValue(direction, out int nextRoomId))
+                return false;
+            // Since door was deemed passable before calling transition, we close gates if needed:
+            _doorService.AfterPassingDoor(currentRoom, direction);
+            // Calculate entry position
+            nextRoom = GetNextRoom(nextRoomId);
+            var entryPos = GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction));
+            player.UpdatePosition(entryPos);
+            return true;
+        }
+        private Room GetNextRoom(int roomId)
+        {
+            // This should be retrieved from a room repository or passed in constructor
+            // For simplicity, assume we have access to all rooms:
+            return GameService.RoomsById[roomId]; // If you keep a static dictionary or injection
+        }
+        private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
+        {
+            return comingFromDirection switch
+            {
+                Direction.North => new Coordinates(nextRoom.Width / 2, 0),
+                Direction.South => new Coordinates(nextRoom.Width / 2, nextRoom.Height - 1),
+                Direction.West => new Coordinates(0, nextRoom.Height / 2),
+                Direction.East => new Coordinates(nextRoom.Width - 1, nextRoom.Height / 2),
+                _ => new Coordinates(1, 1)
+            };
+        }
+        private Direction OppositeDirection(Direction direction)
+        {
+            return direction switch
+            {
+                Direction.North => Direction.South,
+                Direction.South => Direction.North,
+                Direction.East => Direction.West,
+                Direction.West => Direction.East,
+                _ => direction
+            };
+        }
+    }
+}
+
 // File: TempleOfDoom.BusinessLogic\Strategies\DefaultMovementStrategy.cs
 namespace TempleOfDoom.BusinessLogic.Strategies
 {
@@ -999,15 +1175,29 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
     public class ClosingGateDoor : IDoor
     {
         private bool _hasClosed = false;
-        public char GetRepresentation(bool isHorizontal) => 'n';
-        public ConsoleColor GetColor() => ConsoleColor.DarkMagenta;
+        public char GetRepresentation(bool isHorizontal)
+        {
+            // If the door has not closed yet (has not been passed through), 
+            // it should appear as a normal, empty door passage " " 
+            // to trick the player into thinking it's a normal open connection.
+            // Once closed (after passing), show 'n'.
+            return _hasClosed ? 'n' : ' ';
+        }
+        public ConsoleColor GetColor()
+        {
+            // When not yet closed, appear as a default (white) passage.
+            // After closing, use the distinctive color.
+            return _hasClosed ? ConsoleColor.DarkMagenta : ConsoleColor.White;
+        }
         public bool IsOpen(Player player, Room currentRoom)
         {
-            return !_hasClosed; // open until it closes once
+            // It's open until player passes through once; after that, it closes forever.
+            return !_hasClosed;
         }
         public void NotifyStateChange()
         {
-            // After passing once, door closes forever
+            // After passing once, door closes forever.
+            // This is typically called after passing through it the first time.
             _hasClosed = true;
         }
     }
@@ -1123,7 +1313,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
     public class ToggleDoor : IDoor
     {
         private bool _isOpen = false; // default state closed
-        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
+        public char GetRepresentation(bool isHorizontal) => '\u22A5';
         public ConsoleColor GetColor() => ConsoleColor.Yellow;
         public bool IsOpen(Player player, Room currentRoom) => _isOpen;
         public void NotifyStateChange()
@@ -1217,7 +1407,6 @@ namespace TempleOfDoom.BusinessLogic.Models.Items
         public bool IsCollectible => false;
         public bool OnPlayerEnter(Player player)
         {
-            Console.WriteLine("You stepped on a pressure plate.");
             // Notify all toggleable doors in current room
             if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
             {
@@ -1271,7 +1460,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
     public class FloorTile : Tile
     {
-        public override string Representation => ".";
+        public override string Representation => " ";
         public override bool IsWalkable => true;
     }
 }
