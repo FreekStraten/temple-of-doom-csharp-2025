@@ -7,21 +7,24 @@ using TempleOfDoom.BusinessLogic.Interfaces;
 
 namespace TempleOfDoom.BusinessLogic.Models.Item.Item
 {
-    public class BoobyTrap : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Item.Item
     {
-        public int Damage { get; }
-        public string Name => "BoobyTrap";
-        public bool IsCollectible => false;
-
-        public BoobyTrap(int damage)
+        public class BoobyTrap : IItem
         {
-            Damage = damage;
-        }
+            public int Damage { get; }
+            public string Name => "BoobyTrap";
+            public bool IsCollectible => false;
 
-        public bool OnPlayerEnter(Player player)
-        {
-            player.Lives -= Damage;
-            return false; // Do not remove
+            public BoobyTrap(int damage)
+            {
+                Damage = damage;
+            }
+
+            public bool OnPlayerEnter(Player player, Room currentRoom) 
+            {
+                player.Lives -= Damage;
+                return false; 
+            }
         }
     }
 }

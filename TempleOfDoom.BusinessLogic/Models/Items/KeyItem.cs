@@ -18,7 +18,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
             Color = color;
         }
 
-        public bool OnPlayerEnter(Player player)
+        public bool OnPlayerEnter(Player player, Room currentRoom)
         {
             player.CollectItem(this);
             return true; // Remove after collection

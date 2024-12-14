@@ -28,19 +28,14 @@ namespace TempleOfDoom.Presentation
                     else
                     {
                         var tile = room.GetTileAt(coords);
-
                         if (tile is ItemTileDecorator itemTile)
                         {
                             Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
                             Console.Write($"{itemTile.Representation} ");
                             Console.ResetColor();
                         }
-                        else if (tile is DoorTile)
+                        else if (tile is DoorTile doorTile)
                         {
-                            var doorTile = tile as DoorTile;
-                            // Cast doorTile._door if needed or add a method to DoorTile for color:
-                            // For simplicity, let's just call a method in DoorTile:
-                            // We'll store the door reference in DoorTile and have it provide color.
                             var doorColor = doorTile.GetDoorColor();
                             Console.ForegroundColor = doorColor;
                             Console.Write($"{doorTile.Representation} ");
@@ -57,7 +52,6 @@ namespace TempleOfDoom.Presentation
                 Console.WriteLine();
             }
         }
-
 
         public static void RenderPlayerStatus(Player player, Room currentRoom)
         {

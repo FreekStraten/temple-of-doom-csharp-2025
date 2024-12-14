@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Item.Item;
+using TempleOfDoom.BusinessLogic.Models.Item.Item.TempleOfDoom.BusinessLogic.Models.Item.Item;
 using TempleOfDoom.BusinessLogic.Models.Items;
+using TempleOfDoom.BusinessLogic.Models.Items.TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.DataAccess;
 
 namespace TempleOfDoom.BusinessLogic.Factories

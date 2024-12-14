@@ -11,6 +11,6 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         string Name { get; }
         bool IsCollectible { get; }
-        bool OnPlayerEnter(Player player);
+        bool OnPlayerEnter(Player player, Room currentRoom); 
     }
 }

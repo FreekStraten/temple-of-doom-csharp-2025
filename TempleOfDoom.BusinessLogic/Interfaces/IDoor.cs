@@ -13,7 +13,6 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
 
         ConsoleColor GetColor();
 
-        // Skeleton methods for logic:
         bool IsOpen(Player player, Room currentRoom);
 
         // Some doors might need to be toggled externally (e.g., pressure plates)

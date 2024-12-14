@@ -13,7 +13,7 @@ namespace TempleOfDoom.Presentation
 {
     public class Program
     {
-        private static bool StartGame = true;
+        private static bool StartGame = false;
 
         public static void Main(string[] args)
         {

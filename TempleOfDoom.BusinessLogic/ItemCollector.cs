@@ -7,6 +7,7 @@ using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.BusinessLogic.Models;
+using TempleOfDoom.BusinessLogic.Models.Items.TempleOfDoom.BusinessLogic.Models.Items;
 
 namespace TempleOfDoom.BusinessLogic
 {
@@ -33,7 +34,7 @@ namespace TempleOfDoom.BusinessLogic
             var tile = room.GetTileAt(player.Position);
             if (tile is ItemTileDecorator itemTile)
             {
-                bool shouldRemove = itemTile.Item.OnPlayerEnter(player);
+                bool shouldRemove = itemTile.Item.OnPlayerEnter(player, room);
                 if (player.Lives <= 0)
                 {
                     _gameStateManager?.MarkLose();
@@ -55,5 +56,4 @@ namespace TempleOfDoom.BusinessLogic
             return false;
         }
     }
-
 }

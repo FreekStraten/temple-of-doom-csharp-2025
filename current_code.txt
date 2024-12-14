@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 11-12-2024 19:17:35
+// Consolidated Code Extracted on 12-12-2024 18:51:50
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -205,12 +205,8 @@ namespace TempleOfDoom.Presentation
                             Console.Write($"{itemTile.Representation} ");
                             Console.ResetColor();
                         }
-                        else if (tile is DoorTile)
+                        else if (tile is DoorTile doorTile)
                         {
-                            var doorTile = tile as DoorTile;
-                            // Cast doorTile._door if needed or add a method to DoorTile for color:
-                            // For simplicity, let's just call a method in DoorTile:
-                            // We'll store the door reference in DoorTile and have it provide color.
                             var doorColor = doorTile.GetDoorColor();
                             Console.ForegroundColor = doorColor;
                             Console.Write($"{doorTile.Representation} ");
@@ -385,9 +381,7 @@ namespace TempleOfDoom.Presentation.RemoveLater
 // File: TempleOfDoom.BusinessLogic\GameService.cs
 public class GameService
 {
-    // Public for demonstration; better to inject or pass through constructor
-    public static Dictionary<int, Room> RoomsById { get; set; }
-    public static GameService Instance { get; private set; }
+    private Dictionary<int, Room> _roomsById; 
     private IGameStateManager _gameStateManager;
     private IPlayerMovementController _playerMovementController;
     private IItemCollector _itemCollector;
@@ -402,15 +396,14 @@ public class GameService
         Dictionary<int, Room> roomsById,
         Dictionary<int, Dictionary<Direction, int>> roomConnections)
     {
-        Instance = this;
-        RoomsById = roomsById;
+        // Removed: Instance = this;
+        _roomsById = roomsById; // CHANGED: Store a reference
         _gameStateManager = new GameStateManager();
-        // Setup services
         IDoorService doorService = new DoorService();
         IItemCollector itemCollector = new ItemCollector();
-        itemCollector.InitializeTotalStones(RoomsById.Values);
+        itemCollector.InitializeTotalStones(_roomsById.Values);
         itemCollector.SetGameStateManager(_gameStateManager);
-        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService);
+        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService, _roomsById); // CHANGED: pass roomsById
         IMovementStrategy movementStrategy = new DefaultMovementStrategy();
         IPlayerMovementController movementController = new PlayerMovementController(movementStrategy, roomTransitionService, doorService, itemCollector, _gameStateManager);
         _itemCollector = itemCollector;
@@ -421,7 +414,13 @@ public class GameService
     public void HandlePlayerMovement(Direction direction)
     {
         if (IsGameOver) return;
-        _playerMovementController.TryMovePlayer(Player, CurrentRoom, direction);
+        if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
+        {
+            if (newRoom != CurrentRoom)
+            {
+                SetCurrentRoom(newRoom);
+            }
+        }
     }
     public void SetCurrentRoom(Room room)
     {
@@ -452,7 +451,7 @@ namespace TempleOfDoom.BusinessLogic
             var tile = room.GetTileAt(player.Position);
             if (tile is ItemTileDecorator itemTile)
             {
-                bool shouldRemove = itemTile.Item.OnPlayerEnter(player);
+                bool shouldRemove = itemTile.Item.OnPlayerEnter(player, room);
                 if (player.Lives <= 0)
                 {
                     _gameStateManager?.MarkLose();
@@ -768,7 +767,7 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         string Name { get; }
         bool IsCollectible { get; }
-        bool OnPlayerEnter(Player player);
+        bool OnPlayerEnter(Player player, Room currentRoom); 
     }
 }
 
@@ -812,10 +811,10 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         /// <summary>
         /// Attempt to move the player in the given direction inside the current room.
-        /// Returns true if moved inside the room, false if not.
-        /// If movement is not possible inside the room, might trigger room transition.
+        /// Returns true if moved or transitioned, false otherwise.
+        /// If room transition occurs, the new room is returned in newCurrentRoom.
         /// </summary>
-        bool TryMovePlayer(Player player, Room currentRoom, Direction direction);
+        bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom);
     }
 }
 
@@ -1022,14 +1021,14 @@ namespace TempleOfDoom.BusinessLogic.Services
             _itemCollector = itemCollector;
             _gameStateManager = gameStateManager;
         }
-        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction)
+        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom) // CHANGED
         {
+            newCurrentRoom = currentRoom; // default to currentRoom
             if (_gameStateManager.IsGameOver) return false;
             Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
-            // Check boundaries
             if (IsInsideRoom(nextPos, currentRoom))
             {
-                // Check if walkable or if it's a door
+                // Inside room movement
                 if (IsPositionWalkable(currentRoom, player, nextPos))
                 {
                     player.UpdatePosition(nextPos);
@@ -1040,15 +1039,13 @@ namespace TempleOfDoom.BusinessLogic.Services
             }
             else
             {
-                // Outside room boundaries, check if door allows passing
+                // Attempt room transition
                 if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
                 {
-                    // Attempt to transition to next room
                     if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
                     {
-                        // On entering the next room, handle item again (if standing on item)
                         _itemCollector.HandleItemInteraction(player, nextRoom);
-                        GameService.Instance.SetCurrentRoom(nextRoom);
+                        newCurrentRoom = nextRoom; // CHANGED: Instead of setting via GameService, return it
                         return true;
                     }
                 }
@@ -1078,10 +1075,12 @@ namespace TempleOfDoom.BusinessLogic.Services
     {
         private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
         private readonly IDoorService _doorService;
-        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService)
+        private readonly Dictionary<int, Room> _roomsById; 
+        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService, Dictionary<int, Room> roomsById) 
         {
             _roomConnections = roomConnections;
             _doorService = doorService;
+            _roomsById = roomsById; 
         }
         public bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom)
         {
@@ -1090,9 +1089,7 @@ namespace TempleOfDoom.BusinessLogic.Services
                 return false;
             if (!connForRoom.TryGetValue(direction, out int nextRoomId))
                 return false;
-            // Since door was deemed passable before calling transition, we close gates if needed:
             _doorService.AfterPassingDoor(currentRoom, direction);
-            // Calculate entry position
             nextRoom = GetNextRoom(nextRoomId);
             var entryPos = GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction));
             player.UpdatePosition(entryPos);
@@ -1100,9 +1097,8 @@ namespace TempleOfDoom.BusinessLogic.Services
         }
         private Room GetNextRoom(int roomId)
         {
-            // This should be retrieved from a room repository or passed in constructor
-            // For simplicity, assume we have access to all rooms:
-            return GameService.RoomsById[roomId]; // If you keep a static dictionary or injection
+            // CHANGED: no longer rely on GameService. Use _roomsById
+            return _roomsById[roomId];
         }
         private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
         {
@@ -1326,19 +1322,22 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 // File: TempleOfDoom.BusinessLogic\Models\Items\BoobyTrap.cs
 namespace TempleOfDoom.BusinessLogic.Models.Item.Item
 {
-    public class BoobyTrap : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Item.Item
     {
-        public int Damage { get; }
-        public string Name => "BoobyTrap";
-        public bool IsCollectible => false;
-        public BoobyTrap(int damage)
+        public class BoobyTrap : IItem
         {
-            Damage = damage;
-        }
-        public bool OnPlayerEnter(Player player)
-        {
-            player.Lives -= Damage;
-            return false; // Do not remove
+            public int Damage { get; }
+            public string Name => "BoobyTrap";
+            public bool IsCollectible => false;
+            public BoobyTrap(int damage)
+            {
+                Damage = damage;
+            }
+            public bool OnPlayerEnter(Player player, Room currentRoom) 
+            {
+                player.Lives -= Damage;
+                return false; 
+            }
         }
     }
 }
@@ -1355,10 +1354,10 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
         {
             Damage = damage;
         }
-        public bool OnPlayerEnter(Player player)
+        public bool OnPlayerEnter(Player player, Room currentRoom)
         {
             player.Lives -= Damage;
-            return true; // Remove after activation
+            return true; 
         }
     }
 }
@@ -1390,7 +1389,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
         {
             Color = color;
         }
-        public bool OnPlayerEnter(Player player)
+        public bool OnPlayerEnter(Player player, Room currentRoom)
         {
             player.CollectItem(this);
             return true; // Remove after collection
@@ -1401,21 +1400,20 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
 // File: TempleOfDoom.BusinessLogic\Models\Items\PressurePlate.cs
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    public class PressurePlate : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Items
     {
-        public string Name => "Pressure Plate";
-        public bool IsCollectible => false;
-        public bool OnPlayerEnter(Player player)
+        public class PressurePlate : IItem
         {
-            // Notify all toggleable doors in current room
-            if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
+            public string Name => "Pressure Plate";
+            public bool IsCollectible => false;
+            public bool OnPlayerEnter(Player player, Room currentRoom) 
             {
-                foreach (var door in GameService.Instance.CurrentRoom.GetDoors())
+                foreach (var door in currentRoom.GetDoors()) 
                 {
                     door.NotifyStateChange();
                 }
+                return false;
             }
-            return false;
         }
     }
 }
@@ -1423,14 +1421,17 @@ namespace TempleOfDoom.BusinessLogic.Models.Items
 // File: TempleOfDoom.BusinessLogic\Models\Items\SankaraStone.cs
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    public class SankaraStone : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Items
     {
-        public string Name => "Sankara Stone";
-        public bool IsCollectible => true;
-        public bool OnPlayerEnter(Player player)
+        public class SankaraStone : IItem
         {
-            player.CollectItem(this);
-            return true; // Remove after collection
+            public string Name => "Sankara Stone";
+            public bool IsCollectible => true;
+            public bool OnPlayerEnter(Player player, Room currentRoom)
+            {
+                player.CollectItem(this);
+                return true;
+            }
         }
     }
 }

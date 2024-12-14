@@ -14,11 +14,13 @@ namespace TempleOfDoom.BusinessLogic.Services
     {
         private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
         private readonly IDoorService _doorService;
+        private readonly Dictionary<int, Room> _roomsById; 
 
-        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService)
+        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService, Dictionary<int, Room> roomsById) 
         {
             _roomConnections = roomConnections;
             _doorService = doorService;
+            _roomsById = roomsById; 
         }
 
         public bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom)
@@ -26,26 +28,21 @@ namespace TempleOfDoom.BusinessLogic.Services
             nextRoom = null;
             if (!_roomConnections.TryGetValue(currentRoom.Id, out var connForRoom))
                 return false;
-
             if (!connForRoom.TryGetValue(direction, out int nextRoomId))
                 return false;
 
-            // Since door was deemed passable before calling transition, we close gates if needed:
             _doorService.AfterPassingDoor(currentRoom, direction);
 
-            // Calculate entry position
             nextRoom = GetNextRoom(nextRoomId);
             var entryPos = GetEntryPositionInNextRoom(nextRoom, OppositeDirection(direction));
             player.UpdatePosition(entryPos);
-
             return true;
         }
 
         private Room GetNextRoom(int roomId)
         {
-            // This should be retrieved from a room repository or passed in constructor
-            // For simplicity, assume we have access to all rooms:
-            return GameService.RoomsById[roomId]; // If you keep a static dictionary or injection
+            // CHANGED: no longer rely on GameService. Use _roomsById
+            return _roomsById[roomId];
         }
 
         private Coordinates GetEntryPositionInNextRoom(Room nextRoom, Direction comingFromDirection)
@@ -72,5 +69,4 @@ namespace TempleOfDoom.BusinessLogic.Services
             };
         }
     }
-
 }

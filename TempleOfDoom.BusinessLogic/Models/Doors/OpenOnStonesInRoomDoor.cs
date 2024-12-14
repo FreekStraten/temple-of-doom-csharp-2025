@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Items;
+using TempleOfDoom.BusinessLogic.Models.Items.TempleOfDoom.BusinessLogic.Models.Items;
 
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {

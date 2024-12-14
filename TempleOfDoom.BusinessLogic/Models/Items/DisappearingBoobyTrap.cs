@@ -18,10 +18,11 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
             Damage = damage;
         }
 
-        public bool OnPlayerEnter(Player player)
+        public bool OnPlayerEnter(Player player, Room currentRoom)
         {
             player.Lives -= Damage;
-            return true; // Remove after activation
+            return true; 
         }
     }
 }
+

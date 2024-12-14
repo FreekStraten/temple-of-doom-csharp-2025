@@ -8,10 +8,7 @@ using TempleOfDoom.BusinessLogic;
 
 public class GameService
 {
-    // Public for demonstration; better to inject or pass through constructor
-    public static Dictionary<int, Room> RoomsById { get; set; }
-
-    public static GameService Instance { get; private set; }
+    private Dictionary<int, Room> _roomsById; 
 
     private IGameStateManager _gameStateManager;
     private IPlayerMovementController _playerMovementController;
@@ -19,7 +16,6 @@ public class GameService
 
     public Room CurrentRoom { get; private set; }
     public Player Player { get; private set; }
-
     public bool IsWin => _gameStateManager.IsWin;
     public bool IsLose => _gameStateManager.IsLose;
     public bool IsGameOver => _gameStateManager.IsGameOver;
@@ -30,24 +26,20 @@ public class GameService
         Dictionary<int, Room> roomsById,
         Dictionary<int, Dictionary<Direction, int>> roomConnections)
     {
-        Instance = this;
-        RoomsById = roomsById;
+        // Removed: Instance = this;
+        _roomsById = roomsById; // CHANGED: Store a reference
 
         _gameStateManager = new GameStateManager();
-
-        // Setup services
         IDoorService doorService = new DoorService();
         IItemCollector itemCollector = new ItemCollector();
-        itemCollector.InitializeTotalStones(RoomsById.Values);
+        itemCollector.InitializeTotalStones(_roomsById.Values);
         itemCollector.SetGameStateManager(_gameStateManager);
-
-        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService);
+        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService, _roomsById); // CHANGED: pass roomsById
         IMovementStrategy movementStrategy = new DefaultMovementStrategy();
         IPlayerMovementController movementController = new PlayerMovementController(movementStrategy, roomTransitionService, doorService, itemCollector, _gameStateManager);
 
         _itemCollector = itemCollector;
         _playerMovementController = movementController;
-
         CurrentRoom = currentRoom;
         Player = player;
     }
@@ -55,8 +47,13 @@ public class GameService
     public void HandlePlayerMovement(Direction direction)
     {
         if (IsGameOver) return;
-
-        _playerMovementController.TryMovePlayer(Player, CurrentRoom, direction);
+        if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
+        {
+            if (newRoom != CurrentRoom)
+            {
+                SetCurrentRoom(newRoom);
+            }
+        }
     }
 
     public void SetCurrentRoom(Room room)

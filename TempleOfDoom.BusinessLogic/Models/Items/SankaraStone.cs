@@ -2,15 +2,18 @@
 
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    public class SankaraStone : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Items
     {
-        public string Name => "Sankara Stone";
-        public bool IsCollectible => true;
-
-        public bool OnPlayerEnter(Player player)
+        public class SankaraStone : IItem
         {
-            player.CollectItem(this);
-            return true; // Remove after collection
+            public string Name => "Sankara Stone";
+            public bool IsCollectible => true;
+
+            public bool OnPlayerEnter(Player player, Room currentRoom)
+            {
+                player.CollectItem(this);
+                return true;
+            }
         }
     }
 }

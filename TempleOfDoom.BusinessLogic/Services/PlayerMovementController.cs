@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TempleOfDoom.BusinessLogic.Enum;
+﻿using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Models;
@@ -33,15 +28,16 @@ namespace TempleOfDoom.BusinessLogic.Services
             _gameStateManager = gameStateManager;
         }
 
-        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction)
+        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom) // CHANGED
         {
+            newCurrentRoom = currentRoom; // default to currentRoom
             if (_gameStateManager.IsGameOver) return false;
 
             Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
-            // Check boundaries
+
             if (IsInsideRoom(nextPos, currentRoom))
             {
-                // Check if walkable or if it's a door
+                // Inside room movement
                 if (IsPositionWalkable(currentRoom, player, nextPos))
                 {
                     player.UpdatePosition(nextPos);
@@ -52,15 +48,13 @@ namespace TempleOfDoom.BusinessLogic.Services
             }
             else
             {
-                // Outside room boundaries, check if door allows passing
+                // Attempt room transition
                 if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
                 {
-                    // Attempt to transition to next room
                     if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
                     {
-                        // On entering the next room, handle item again (if standing on item)
                         _itemCollector.HandleItemInteraction(player, nextRoom);
-                        GameService.Instance.SetCurrentRoom(nextRoom);
+                        newCurrentRoom = nextRoom; // CHANGED: Instead of setting via GameService, return it
                         return true;
                     }
                 }
@@ -84,5 +78,4 @@ namespace TempleOfDoom.BusinessLogic.Services
             return tile.IsWalkable;
         }
     }
-
 }

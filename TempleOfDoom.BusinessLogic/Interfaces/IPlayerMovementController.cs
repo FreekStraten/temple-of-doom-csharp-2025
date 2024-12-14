@@ -12,10 +12,10 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         /// <summary>
         /// Attempt to move the player in the given direction inside the current room.
-        /// Returns true if moved inside the room, false if not.
-        /// If movement is not possible inside the room, might trigger room transition.
+        /// Returns true if moved or transitioned, false otherwise.
+        /// If room transition occurs, the new room is returned in newCurrentRoom.
         /// </summary>
-        bool TryMovePlayer(Player player, Room currentRoom, Direction direction);
+        bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom);
     }
-
 }
+

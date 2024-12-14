@@ -7,23 +7,22 @@ using TempleOfDoom.BusinessLogic.Interfaces;
 
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    public class PressurePlate : IItem
+    namespace TempleOfDoom.BusinessLogic.Models.Items
     {
-        public string Name => "Pressure Plate";
-        public bool IsCollectible => false;
-
-        public bool OnPlayerEnter(Player player)
+        public class PressurePlate : IItem
         {
-            // Notify all toggleable doors in current room
-            if (GameService.Instance != null && GameService.Instance.CurrentRoom != null)
+            public string Name => "Pressure Plate";
+            public bool IsCollectible => false;
+
+            public bool OnPlayerEnter(Player player, Room currentRoom) 
             {
-                foreach (var door in GameService.Instance.CurrentRoom.GetDoors())
+                foreach (var door in currentRoom.GetDoors()) 
                 {
                     door.NotifyStateChange();
                 }
+                return false;
             }
-
-            return false;
         }
     }
+
 }
