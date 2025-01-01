@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 12-12-2024 18:51:50
+// Consolidated Code Extracted on 1-1-2025 15:10:03
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -529,7 +529,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             Coordinates doorPosition = GetDoorPosition(room, direction);
             room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
             // Register if needed
-            if (door is ToggleDoor || door is DoorDecorator)
+            if (door is ToggleDoorDecorator || door is DoorDecorator)
             {
                 room.RegisterDoor(door);
             }
@@ -576,27 +576,30 @@ namespace TempleOfDoom.BusinessLogic.Mappers
 // File: TempleOfDoom.BusinessLogic\Decorators\DoorDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Decorators
 {
-    public class DoorDecorator : IDoor
+    public abstract class DoorDecorator : IDoor
     {
-        private readonly IDoor _primary;
-        private readonly IDoor _secondary;
-        public DoorDecorator(IDoor primary, IDoor secondary)
+        protected readonly IDoor _wrappedDoor;
+        protected DoorDecorator(IDoor wrappedDoor)
         {
-            _primary = primary;
-            _secondary = secondary;
+            _wrappedDoor = wrappedDoor;
         }
-        public IDoor PrimaryDoor => _primary;
-        public IDoor SecondaryDoor => _secondary;
-        public char GetRepresentation(bool isHorizontal) => _primary.GetRepresentation(isHorizontal);
-        public ConsoleColor GetColor() => _primary.GetColor();
-        public bool IsOpen(Player player, Room currentRoom)
+        // Public property to access the wrapped door
+        public IDoor WrappedDoor => _wrappedDoor;
+        public virtual char GetRepresentation(bool isHorizontal)
         {
-            return _primary.IsOpen(player, currentRoom) && _secondary.IsOpen(player, currentRoom);
+            return _wrappedDoor.GetRepresentation(isHorizontal);
         }
-        public void NotifyStateChange()
+        public virtual ConsoleColor GetColor()
         {
-            _primary.NotifyStateChange();
-            _secondary.NotifyStateChange();
+            return _wrappedDoor.GetColor();
+        }
+        public virtual bool IsOpen(Player player, Room currentRoom)
+        {
+            return _wrappedDoor.IsOpen(player, currentRoom);
+        }
+        public virtual void NotifyStateChange()
+        {
+            _wrappedDoor.NotifyStateChange();
         }
     }
 }
@@ -670,35 +673,40 @@ namespace TempleOfDoom.BusinessLogic.Factories
 {
     public static class DoorFactory
     {
-        public static IDoor CreateDoor(DoorDto doorDto)
-        {
-            return doorDto.Type.ToLower() switch
-            {
-                "colored" => new ColoredDoor(doorDto.Color),
-                "toggle" => new ToggleDoor(),
-                "closing gate" => new ClosingGateDoor(),
-                "open on odd" => new OpenOnOddDoor(),
-                "open on stones in room" => new OpenOnStonesInRoomDoor(doorDto.NoOfStones ?? 0),
-                _ => new DefaultDoor()
-            };
-        }
         public static IDoor CreateCompositeDoor(List<DoorDto> doorDtos)
         {
+            // If no door info, return a bare door
             if (doorDtos == null || doorDtos.Count == 0)
             {
                 return new DefaultDoor();
             }
-            if (doorDtos.Count == 1)
+            // Start with the "plain" door
+            IDoor doorChain = new DefaultDoor();
+            // Decorate for each door type
+            foreach (var dto in doorDtos)
             {
-                return CreateDoor(doorDtos[0]);
+                doorChain = WrapDoor(doorChain, dto);
             }
-            IDoor result = CreateDoor(doorDtos[0]);
-            for (int i = 1; i < doorDtos.Count; i++)
+            return doorChain;
+        }
+        private static IDoor WrapDoor(IDoor baseDoor, DoorDto doorDto)
+        {
+            switch (doorDto.Type.ToLower())
             {
-                IDoor next = CreateDoor(doorDtos[i]);
-                result = new DoorDecorator(result, next);
+                case "colored":
+                    return new ColoredDoorDecorator(baseDoor, doorDto.Color);
+                case "toggle":
+                    return new ToggleDoorDecorator(baseDoor);
+                case "closing gate":
+                    return new ClosingGateDoorDecorator(baseDoor);
+                case "open on odd":
+                    return new OpenOnOddDoorDecorator(baseDoor);
+                case "open on stones in room":
+                    return new OpenOnStonesInRoomDecorator(baseDoor, doorDto.NoOfStones ?? 0);
+                // If some unknown type, just return baseDoor or optionally throw
+                default:
+                    return baseDoor;
             }
-            return result;
         }
     }
 }
@@ -729,7 +737,6 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     {
         char GetRepresentation(bool isHorizontal);
         ConsoleColor GetColor();
-        // Skeleton methods for logic:
         bool IsOpen(Player player, Room currentRoom);
         // Some doors might need to be toggled externally (e.g., pressure plates)
         void NotifyStateChange();
@@ -958,19 +965,21 @@ namespace TempleOfDoom.BusinessLogic.Services
 {
     public class DoorService : IDoorService
     {
-        // Check if door in given direction can be opened
+        // Check if door in the given direction can be opened
         public bool CanPassThroughDoor(Player player, Room room, Direction direction)
         {
             var doorPos = GetDoorPositionForDirection(room, direction);
-            var tile = room.GetTileAt(doorPos) as DoorTile;
-            if (tile == null) return true; // No door tile means open?
-            return tile.Door.IsOpen(player, room);
+            var doorTile = room.GetTileAt(doorPos) as DoorTile;
+            if (doorTile == null) return true; // No door tile => passable
+            return doorTile.Door.IsOpen(player, room);
         }
         public void AfterPassingDoor(Room room, Direction direction)
         {
             var doorPos = GetDoorPositionForDirection(room, direction);
             var doorTile = room.GetTileAt(doorPos) as DoorTile;
-            if (doorTile != null && ContainsDoorOfType<ClosingGateDoor>(doorTile.Door))
+            // If the door is a "closing gate" decorator, then we call NotifyStateChange
+            // so it can permanently close after the player passes through.
+            if (doorTile != null && ContainsDoorOfType<ClosingGateDoorDecorator>(doorTile.Door))
             {
                 doorTile.Door.NotifyStateChange();
             }
@@ -986,13 +995,20 @@ namespace TempleOfDoom.BusinessLogic.Services
                 _ => new Coordinates(1, 1)
             };
         }
+        /// <summary>
+        /// Recursively checks whether the given door is or contains 
+        /// a decorator of type T somewhere in its wrapping chain.
+        /// </summary>
         private bool ContainsDoorOfType<T>(IDoor door) where T : IDoor
         {
+            // If the current door *is* T, we are done
             if (door is T) return true;
-            if (door is DoorDecorator dec)
+            // If it's a decorator, inspect its wrapped door
+            if (door is DoorDecorator decorator)
             {
-                return ContainsDoorOfType<T>(dec.PrimaryDoor) || ContainsDoorOfType<T>(dec.SecondaryDoor);
+                return ContainsDoorOfType<T>(decorator.WrappedDoor);
             }
+            // If it's neither T nor a decorator, there's nowhere else to look
             return false;
         }
     }
@@ -1165,53 +1181,60 @@ namespace TempleOfDoom.BusinessLogic.Struct
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Doors\ClosingGateDoor.cs
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ClosingGateDoorDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
-    public class ClosingGateDoor : IDoor
+    public class ClosingGateDoorDecorator : DoorDecorator
     {
         private bool _hasClosed = false;
-        public char GetRepresentation(bool isHorizontal)
+        public ClosingGateDoorDecorator(IDoor wrappedDoor)
+            : base(wrappedDoor)
         {
-            // If the door has not closed yet (has not been passed through), 
-            // it should appear as a normal, empty door passage " " 
-            // to trick the player into thinking it's a normal open connection.
-            // Once closed (after passing), show 'n'.
+        }
+        public override bool IsOpen(Player player, Room currentRoom)
+        {
+            // As soon as it's passed once, we close forever
+            // It's "open" only if not closed YET and the base chain is also open
+            return !_hasClosed && base.IsOpen(player, currentRoom);
+        }
+        public override char GetRepresentation(bool isHorizontal)
+        {
             return _hasClosed ? 'n' : ' ';
         }
-        public ConsoleColor GetColor()
+        public override ConsoleColor GetColor()
         {
-            // When not yet closed, appear as a default (white) passage.
-            // After closing, use the distinctive color.
             return _hasClosed ? ConsoleColor.DarkMagenta : ConsoleColor.White;
         }
-        public bool IsOpen(Player player, Room currentRoom)
+        public override void NotifyStateChange()
         {
-            // It's open until player passes through once; after that, it closes forever.
-            return !_hasClosed;
-        }
-        public void NotifyStateChange()
-        {
-            // After passing once, door closes forever.
-            // This is typically called after passing through it the first time.
+            // after passing the door, we close it
             _hasClosed = true;
+            // optionally call base
+            base.NotifyStateChange();
         }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Doors\ColoredDoor.cs
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ColoredDoorDecorator .cs
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
-    public class ColoredDoor : IDoor
+    public class ColoredDoorDecorator : DoorDecorator
     {
         private readonly string _color;
-        public ColoredDoor(string color)
+        public ColoredDoorDecorator(IDoor wrappedDoor, string color)
+            : base(wrappedDoor)
         {
             _color = color.ToLower();
         }
-        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
-        public ConsoleColor GetColor()
+        public override char GetRepresentation(bool isHorizontal)
         {
+            // If you want a certain char for a colored door, override it here
+            // or fallback to the base if you only want to color it.
+            return isHorizontal ? '=' : '|';
+        }
+        public override ConsoleColor GetColor()
+        {
+            // Instead of returning the wrapped door color, we do the color override
             return _color switch
             {
                 "red" => ConsoleColor.Red,
@@ -1219,12 +1242,12 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
                 _ => ConsoleColor.DarkGray
             };
         }
-        public bool IsOpen(Player player, Room currentRoom)
+        public override bool IsOpen(Player player, Room currentRoom)
         {
-            // Open if player has a key of this color
-            return player.Inventory.Any(i => i is KeyItem key && key.Color.ToLower() == _color);
+            // If the player has the matching key, we can allow open
+            bool hasMatchingKey = player.Inventory.Any(i => i is KeyItem key && key.Color.ToLower() == _color);
+            return hasMatchingKey && base.IsOpen(player, currentRoom);
         }
-        public void NotifyStateChange() { /* Not needed for colored door */ }
     }
 }
 
@@ -1233,57 +1256,76 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
     public class DefaultDoor : IDoor
     {
-        public char GetRepresentation(bool isHorizontal) => ' ';
-        public ConsoleColor GetColor() => ConsoleColor.White;
-        public bool IsOpen(Player player, Room currentRoom) => true;
-        public void NotifyStateChange() { /* No op for default door */ }
+        public virtual char GetRepresentation(bool isHorizontal) => ' ';
+        public virtual ConsoleColor GetColor() => ConsoleColor.White;
+        public virtual bool IsOpen(Player player, Room currentRoom) => true;
+        public virtual void NotifyStateChange() { /* no-op */ }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnOddDoor.cs
+// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnOddDoorDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
-    public class OpenOnOddDoor : IDoor
+    public class OpenOnOddDoorDecorator : DoorDecorator
     {
-        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
-        public ConsoleColor GetColor() => ConsoleColor.Magenta;
-        public bool IsOpen(Player player, Room currentRoom)
+        public OpenOnOddDoorDecorator(IDoor wrappedDoor)
+            : base(wrappedDoor)
+        { }
+        public override char GetRepresentation(bool isHorizontal)
         {
-            return player.Lives % 2 != 0;
+            return isHorizontal ? '=' : '|';
         }
-        public void NotifyStateChange() { /* Not needed */ }
+        public override ConsoleColor GetColor()
+        {
+            // Magenta or anything you like
+            return ConsoleColor.Magenta;
+        }
+        public override bool IsOpen(Player player, Room currentRoom)
+        {
+            // Check base chain *and* the odd-lives condition
+            return base.IsOpen(player, currentRoom) && (player.Lives % 2 != 0);
+        }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnStonesInRoomDoor.cs
+// File: TempleOfDoom.BusinessLogic\Models\Doors\OpenOnStonesInRoomDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
-    public class OpenOnStonesInRoomDoor : IDoor
+    public class OpenOnStonesInRoomDecorator : DoorDecorator
     {
         private readonly int _requiredStones;
-        public OpenOnStonesInRoomDoor(int requiredStones)
+        public OpenOnStonesInRoomDecorator(IDoor wrappedDoor, int requiredStones)
+            : base(wrappedDoor)
         {
             _requiredStones = requiredStones;
         }
-        public char GetRepresentation(bool isHorizontal) => isHorizontal ? '=' : '|';
-        public ConsoleColor GetColor() => ConsoleColor.Blue;
-        public bool IsOpen(Player player, Room currentRoom)
+        public override bool IsOpen(Player player, Room currentRoom)
         {
+            // Count the sankara stones in the current room
             int stonesInRoom = 0;
             for (int y = 0; y < currentRoom.Height; y++)
             {
                 for (int x = 0; x < currentRoom.Width; x++)
                 {
-                    var tile = currentRoom.GetTileAt(new Struct.Coordinates(x, y));
-                    if (tile is ItemTileDecorator itemDec && itemDec.Item is SankaraStone)
+                    var tile = currentRoom.GetTileAt(new Coordinates(x, y));
+                    if (tile is ItemTileDecorator itemTile &&
+                        itemTile.Item is SankaraStone)
                     {
                         stonesInRoom++;
                     }
                 }
             }
-            return stonesInRoom == _requiredStones;
+            // Door only opens if base door is open AND the exact number of stones matches
+            return base.IsOpen(player, currentRoom) && (stonesInRoom == _requiredStones);
         }
-        public void NotifyStateChange() { /* Not needed */ }
+        public override char GetRepresentation(bool isHorizontal)
+        {
+            return isHorizontal ? '=' : '|';
+        }
+        public override ConsoleColor GetColor()
+        {
+            return ConsoleColor.Blue;
+        }
     }
 }
 
@@ -1303,18 +1345,38 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Doors\ToggleDoor.cs
+// File: TempleOfDoom.BusinessLogic\Models\Doors\ToggleDoorDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
-    public class ToggleDoor : IDoor
+    public class ToggleDoorDecorator : DoorDecorator
     {
-        private bool _isOpen = false; // default state closed
-        public char GetRepresentation(bool isHorizontal) => '\u22A5';
-        public ConsoleColor GetColor() => ConsoleColor.Yellow;
-        public bool IsOpen(Player player, Room currentRoom) => _isOpen;
-        public void NotifyStateChange()
+        private bool _isOpen = false; // default closed
+        public ToggleDoorDecorator(IDoor wrappedDoor)
+            : base(wrappedDoor)
+        { }
+        public override char GetRepresentation(bool isHorizontal)
         {
+            // special toggle representation
+            return '\u22A5'; // or any symbol you like
+        }
+        public override ConsoleColor GetColor()
+        {
+            // highlight toggles in yellow, for example
+            return ConsoleColor.Yellow;
+        }
+        public override bool IsOpen(Player player, Room currentRoom)
+        {
+            // Must also be open in the chain above
+            // Return true if BOTH chain is open and _isOpen is true
+            return base.IsOpen(player, currentRoom) && _isOpen;
+        }
+        public override void NotifyStateChange()
+        {
+            // Flip state
             _isOpen = !_isOpen;
+            // We also call base.NotifyStateChange if we want to let the rest 
+            // of the chain know, or do something else. 
+            base.NotifyStateChange();
         }
     }
 }

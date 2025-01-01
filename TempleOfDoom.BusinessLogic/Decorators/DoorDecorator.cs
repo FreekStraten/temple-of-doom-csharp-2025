@@ -1,37 +1,39 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models;
 
 namespace TempleOfDoom.BusinessLogic.Decorators
 {
-    public class DoorDecorator : IDoor
+    public abstract class DoorDecorator : IDoor
     {
-        private readonly IDoor _primary;
-        private readonly IDoor _secondary;
+        protected readonly IDoor _wrappedDoor;
 
-        public DoorDecorator(IDoor primary, IDoor secondary)
+        protected DoorDecorator(IDoor wrappedDoor)
         {
-            _primary = primary;
-            _secondary = secondary;
+            _wrappedDoor = wrappedDoor;
         }
 
-        public IDoor PrimaryDoor => _primary;
-        public IDoor SecondaryDoor => _secondary;
+        // Public property to access the wrapped door
+        public IDoor WrappedDoor => _wrappedDoor;
 
-        public char GetRepresentation(bool isHorizontal) => _primary.GetRepresentation(isHorizontal);
-        public ConsoleColor GetColor() => _primary.GetColor();
-        public bool IsOpen(Player player, Room currentRoom)
+        public virtual char GetRepresentation(bool isHorizontal)
         {
-            return _primary.IsOpen(player, currentRoom) && _secondary.IsOpen(player, currentRoom);
+            return _wrappedDoor.GetRepresentation(isHorizontal);
         }
-        public void NotifyStateChange()
+
+        public virtual ConsoleColor GetColor()
         {
-            _primary.NotifyStateChange();
-            _secondary.NotifyStateChange();
+            return _wrappedDoor.GetColor();
+        }
+
+        public virtual bool IsOpen(Player player, Room currentRoom)
+        {
+            return _wrappedDoor.IsOpen(player, currentRoom);
+        }
+
+        public virtual void NotifyStateChange()
+        {
+            _wrappedDoor.NotifyStateChange();
         }
     }
 }

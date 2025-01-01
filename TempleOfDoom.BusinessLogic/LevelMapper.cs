@@ -75,7 +75,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             room.Layout[doorPosition.Y, doorPosition.X] = new DoorTile(door, isHorizontal);
 
             // Register if needed
-            if (door is ToggleDoor || door is DoorDecorator)
+            if (door is ToggleDoorDecorator || door is DoorDecorator)
             {
                 room.RegisterDoor(door);
             }

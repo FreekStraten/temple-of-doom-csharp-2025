@@ -1,35 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TempleOfDoom.BusinessLogic.Decorators;
+using TempleOfDoom.BusinessLogic.Decorators;  // If you need references to the decorator classes
 using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Interfaces;
-using TempleOfDoom.BusinessLogic.Models.Doors;
 using TempleOfDoom.BusinessLogic.Models.Tile;
-using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Struct;
+using TempleOfDoom.BusinessLogic.Models;
+using TempleOfDoom.BusinessLogic.Models.Doors;
 
 namespace TempleOfDoom.BusinessLogic.Services
 {
     public class DoorService : IDoorService
     {
-        // Check if door in given direction can be opened
+        // Check if door in the given direction can be opened
         public bool CanPassThroughDoor(Player player, Room room, Direction direction)
         {
             var doorPos = GetDoorPositionForDirection(room, direction);
-            var tile = room.GetTileAt(doorPos) as DoorTile;
-            if (tile == null) return true; // No door tile means open?
+            var doorTile = room.GetTileAt(doorPos) as DoorTile;
+            if (doorTile == null) return true; // No door tile => passable
 
-            return tile.Door.IsOpen(player, room);
+            return doorTile.Door.IsOpen(player, room);
         }
 
         public void AfterPassingDoor(Room room, Direction direction)
         {
             var doorPos = GetDoorPositionForDirection(room, direction);
             var doorTile = room.GetTileAt(doorPos) as DoorTile;
-            if (doorTile != null && ContainsDoorOfType<ClosingGateDoor>(doorTile.Door))
+
+            // If the door is a "closing gate" decorator, then we call NotifyStateChange
+            // so it can permanently close after the player passes through.
+            if (doorTile != null && ContainsDoorOfType<ClosingGateDoorDecorator>(doorTile.Door))
             {
                 doorTile.Door.NotifyStateChange();
             }
@@ -47,15 +48,23 @@ namespace TempleOfDoom.BusinessLogic.Services
             };
         }
 
+        /// <summary>
+        /// Recursively checks whether the given door is or contains 
+        /// a decorator of type T somewhere in its wrapping chain.
+        /// </summary>
         private bool ContainsDoorOfType<T>(IDoor door) where T : IDoor
         {
+            // If the current door *is* T, we are done
             if (door is T) return true;
-            if (door is DoorDecorator dec)
+
+            // If it's a decorator, inspect its wrapped door
+            if (door is DoorDecorator decorator)
             {
-                return ContainsDoorOfType<T>(dec.PrimaryDoor) || ContainsDoorOfType<T>(dec.SecondaryDoor);
+                return ContainsDoorOfType<T>(decorator.WrappedDoor);
             }
+
+            // If it's neither T nor a decorator, there's nowhere else to look
             return false;
         }
     }
-
 }

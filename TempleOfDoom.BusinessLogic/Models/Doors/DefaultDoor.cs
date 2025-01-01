@@ -9,9 +9,9 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
     public class DefaultDoor : IDoor
     {
-        public char GetRepresentation(bool isHorizontal) => ' ';
-        public ConsoleColor GetColor() => ConsoleColor.White;
-        public bool IsOpen(Player player, Room currentRoom) => true;
-        public void NotifyStateChange() { /* No op for default door */ }
+        public virtual char GetRepresentation(bool isHorizontal) => ' ';
+        public virtual ConsoleColor GetColor() => ConsoleColor.White;
+        public virtual bool IsOpen(Player player, Room currentRoom) => true;
+        public virtual void NotifyStateChange() { /* no-op */ }
     }
 }

@@ -12,38 +12,49 @@ namespace TempleOfDoom.BusinessLogic.Factories
 {
     public static class DoorFactory
     {
-        public static IDoor CreateDoor(DoorDto doorDto)
-        {
-            return doorDto.Type.ToLower() switch
-            {
-                "colored" => new ColoredDoor(doorDto.Color),
-                "toggle" => new ToggleDoor(),
-                "closing gate" => new ClosingGateDoor(),
-                "open on odd" => new OpenOnOddDoor(),
-                "open on stones in room" => new OpenOnStonesInRoomDoor(doorDto.NoOfStones ?? 0),
-                _ => new DefaultDoor()
-            };
-        }
-
         public static IDoor CreateCompositeDoor(List<DoorDto> doorDtos)
         {
+            // If no door info, return a bare door
             if (doorDtos == null || doorDtos.Count == 0)
             {
                 return new DefaultDoor();
             }
 
-            if (doorDtos.Count == 1)
+            // Start with the "plain" door
+            IDoor doorChain = new DefaultDoor();
+
+            // Decorate for each door type
+            foreach (var dto in doorDtos)
             {
-                return CreateDoor(doorDtos[0]);
+                doorChain = WrapDoor(doorChain, dto);
             }
 
-            IDoor result = CreateDoor(doorDtos[0]);
-            for (int i = 1; i < doorDtos.Count; i++)
+            return doorChain;
+        }
+
+        private static IDoor WrapDoor(IDoor baseDoor, DoorDto doorDto)
+        {
+            switch (doorDto.Type.ToLower())
             {
-                IDoor next = CreateDoor(doorDtos[i]);
-                result = new DoorDecorator(result, next);
+                case "colored":
+                    return new ColoredDoorDecorator(baseDoor, doorDto.Color);
+
+                case "toggle":
+                    return new ToggleDoorDecorator(baseDoor);
+
+                case "closing gate":
+                    return new ClosingGateDoorDecorator(baseDoor);
+
+                case "open on odd":
+                    return new OpenOnOddDoorDecorator(baseDoor);
+
+                case "open on stones in room":
+                    return new OpenOnStonesInRoomDecorator(baseDoor, doorDto.NoOfStones ?? 0);
+
+                // If some unknown type, just return baseDoor or optionally throw
+                default:
+                    return baseDoor;
             }
-            return result;
         }
     }
 }
