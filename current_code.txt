@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 1-1-2025 16:31:57
+// Consolidated Code Extracted on 1-1-2025 16:38:44
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -1419,21 +1419,6 @@ namespace TempleOfDoom.BusinessLogic.Models.Item.Item
         {
             player.Lives -= Damage;
             return true; 
-        }
-    }
-}
-
-// File: TempleOfDoom.BusinessLogic\Models\Items\Item.cs
-namespace TempleOfDoom.BusinessLogic.Models.Items
-{
-    public class Item
-    {
-        public Coordinates Position { get; set; }
-        public string Type { get; set; }
-        public Item(int x, int y, string type)
-        {
-            Position = new Coordinates(x, y);
-            Type = type;
         }
     }
 }
