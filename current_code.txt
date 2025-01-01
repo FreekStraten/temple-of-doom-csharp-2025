@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 1-1-2025 15:10:03
+// Consolidated Code Extracted on 1-1-2025 16:31:57
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -1273,12 +1273,11 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
         { }
         public override char GetRepresentation(bool isHorizontal)
         {
-            return isHorizontal ? '=' : '|';
+            return base.GetRepresentation(isHorizontal);
         }
         public override ConsoleColor GetColor()
         {
-            // Magenta or anything you like
-            return ConsoleColor.Magenta;
+            return base.GetColor();
         }
         public override bool IsOpen(Player player, Room currentRoom)
         {
@@ -1320,11 +1319,11 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
         }
         public override char GetRepresentation(bool isHorizontal)
         {
-            return isHorizontal ? '=' : '|';
+            return base.GetRepresentation(isHorizontal);
         }
         public override ConsoleColor GetColor()
         {
-            return ConsoleColor.Blue;
+            return base.GetColor();
         }
     }
 }

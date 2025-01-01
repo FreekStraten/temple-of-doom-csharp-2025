@@ -44,7 +44,7 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 
         public override char GetRepresentation(bool isHorizontal)
         {
-            return isHorizontal ? '=' : '|';
+            return base.GetRepresentation(isHorizontal);
         }
 
         public override ConsoleColor GetColor()
