@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Interfaces;
+using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Models.Item.Item;
+using TempleOfDoom.BusinessLogic.Models.Items; // <-- for KeyDecorator if that's where you placed it
 
 namespace TempleOfDoom.BusinessLogic.Models.Doors
 {
@@ -21,14 +23,13 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 
         public override char GetRepresentation(bool isHorizontal)
         {
-            // If you want a certain char for a colored door, override it here
-            // or fallback to the base if you only want to color it.
+            // Example: '=' for horizontal, '|' for vertical
             return isHorizontal ? '=' : '|';
         }
 
         public override ConsoleColor GetColor()
         {
-            // Instead of returning the wrapped door color, we do the color override
+            // Override the color based on _color
             return _color switch
             {
                 "red" => ConsoleColor.Red,
@@ -39,10 +40,12 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
 
         public override bool IsOpen(Player player, Room currentRoom)
         {
-            // If the player has the matching key, we can allow open
-            bool hasMatchingKey = player.Inventory.Any(i => i is KeyItem key && key.Color.ToLower() == _color);
+            // Check if the player’s inventory contains a KeyDecorator of the matching color
+            bool hasMatchingKey = player.Inventory.Any(i => i is KeyDecorator key
+                                                         && key.Color.ToLower() == _color);
+
+            // Only open if the player has that key AND the wrapped door is open
             return hasMatchingKey && base.IsOpen(player, currentRoom);
         }
     }
-
 }

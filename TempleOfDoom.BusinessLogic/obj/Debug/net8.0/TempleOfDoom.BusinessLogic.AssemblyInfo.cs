@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TempleOfDoom.BusinessLogic")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+90c472d2d447792d2a363630e4ca9dfe058231fd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aa4cfc41f2778b7f577be77087df3edf66fef4b0")]
 [assembly: System.Reflection.AssemblyProductAttribute("TempleOfDoom.BusinessLogic")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TempleOfDoom.BusinessLogic")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

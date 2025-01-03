@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Struct;
@@ -19,6 +18,8 @@ namespace TempleOfDoom.Presentation
                 for (int x = 0; x < room.Width; x++)
                 {
                     var coords = new Coordinates(x, y);
+
+                    // If it's the player's position, render the player
                     if (coords.Equals(player.Position))
                     {
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
@@ -28,21 +29,35 @@ namespace TempleOfDoom.Presentation
                     else
                     {
                         var tile = room.GetTileAt(coords);
-                        if (tile is ItemTileDecorator itemTile)
+
+                        if (tile is DoorTile doorTile)
                         {
-                            Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
-                            Console.Write($"{itemTile.Representation} ");
-                            Console.ResetColor();
-                        }
-                        else if (tile is DoorTile doorTile)
-                        {
+                            // It's a door
                             var doorColor = doorTile.GetDoorColor();
                             Console.ForegroundColor = doorColor;
                             Console.Write($"{doorTile.Representation} ");
                             Console.ResetColor();
                         }
+                        else if (tile is FloorTile floorTile)
+                        {
+                            // It's a floor tile; check for an item on it
+                            if (floorTile.Item != null)
+                            {
+                                Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
+                                Console.Write($"{floorTile.Item.Representation} ");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                // Plain floor tile
+                                Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
+                                Console.Write($"{floorTile.Representation} ");
+                                Console.ResetColor();
+                            }
+                        }
                         else
                         {
+                            // Some other tile (e.g., WallTile)
                             Console.ForegroundColor = ColorManager.GetColorForTile(tile);
                             Console.Write($"{tile.Representation} ");
                             Console.ResetColor();
@@ -95,5 +110,4 @@ namespace TempleOfDoom.Presentation
             Console.ResetColor();
         }
     }
-
 }

@@ -7,7 +7,7 @@ using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.BusinessLogic.Models;
-using TempleOfDoom.BusinessLogic.Models.Items.TempleOfDoom.BusinessLogic.Models.Items;
+using TempleOfDoom.BusinessLogic.Models.Tile;
 
 namespace TempleOfDoom.BusinessLogic
 {
@@ -19,9 +19,12 @@ namespace TempleOfDoom.BusinessLogic
 
         public void InitializeTotalStones(IEnumerable<Room> rooms)
         {
-            _totalStones = rooms.SelectMany(r => r.Layout.Cast<ITile>())
-                .OfType<ItemTileDecorator>()
-                .Count(t => t.Item is SankaraStone);
+            // Look through all rooms' layout and count how many floor tiles
+            // have an item that is a SankaraStone (decorator).
+            _totalStones = rooms
+                .SelectMany(r => r.Layout.Cast<ITile>())
+                .OfType<FloorTile>() // only floor tiles hold items
+                .Count(floorTile => floorTile.Item is SankaraStoneDecorator);
         }
 
         public void SetGameStateManager(IGameStateManager gameStateManager)
@@ -31,18 +34,27 @@ namespace TempleOfDoom.BusinessLogic
 
         public bool HandleItemInteraction(Player player, Room room)
         {
-            var tile = room.GetTileAt(player.Position);
-            if (tile is ItemTileDecorator itemTile)
+            // Get the tile where the player is standing
+            ITile tile = room.GetTileAt(player.Position);
+
+            // If it's a FloorTile that has an IItem
+            if (tile is FloorTile floorTile && floorTile.Item != null)
             {
-                bool shouldRemove = itemTile.Item.OnPlayerEnter(player, room);
+                // Let the item handle the interaction
+                bool shouldRemove = floorTile.Item.OnPlayerEnter(player, room);
+
+                // If the player’s lives dropped to 0 or below, game over
                 if (player.Lives <= 0)
                 {
                     _gameStateManager?.MarkLose();
                     return true;
                 }
+
+                // If the item indicates it should be removed from the tile
                 if (shouldRemove)
                 {
-                    if (itemTile.Item is SankaraStone)
+                    // Check if it’s a SankaraStone to increment our counter
+                    if (floorTile.Item is SankaraStoneDecorator)
                     {
                         _collectedStones++;
                         if (_collectedStones == _totalStones)
@@ -50,9 +62,11 @@ namespace TempleOfDoom.BusinessLogic
                             _gameStateManager?.MarkWin();
                         }
                     }
-                    room.RemoveItemAt(player.Position);
+                    // Remove the item by setting it to null
+                    floorTile.Item = null;
                 }
             }
+
             return false;
         }
     }
