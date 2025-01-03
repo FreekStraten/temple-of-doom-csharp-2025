@@ -4,6 +4,7 @@ using TempleOfDoom.BusinessLogic;
 using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Factories;
 using TempleOfDoom.BusinessLogic.Interfaces;
+using TempleOfDoom.BusinessLogic.Manager;
 using TempleOfDoom.BusinessLogic.Mappers;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.DataAccess;
@@ -37,10 +38,19 @@ namespace TempleOfDoom.Presentation
                 LevelMapper.ApplyConnectionsToRooms(levelData.Connections, roomsById);
                 var roomConnections = LevelMapper.CreateRoomConnectionMap(levelData.Connections);
 
-                Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
+
+                IGameStateManager gameStateManager = new GameStateManager();
+                Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player, gameStateManager);
                 Room currentRoom = roomsById[levelData.Player.StartRoomId];
 
-                GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
+                // Pass the SAME gameStateManager into the GameService constructor
+                GameService gameService = new GameService(
+                    gameStateManager,
+                    currentRoom,
+                    player,
+                    roomsById,
+                    roomConnections
+                );
 
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
 

@@ -39,10 +39,11 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             return room;
         }
 
-        public static Player MapPlayerDtoToPlayer(PlayerDto playerDto)
+        public static Player MapPlayerDtoToPlayer(PlayerDto playerDto, IGameStateManager gameStateManager)
         {
-            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives);
+            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives, gameStateManager);
         }
+
 
         public static void ApplyConnectionsToRooms(List<ConnectionDto> connections, Dictionary<int, Room> rooms)
         {

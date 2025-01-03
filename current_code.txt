@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 1-1-2025 16:38:44
+// Consolidated Code Extracted on 3-1-2025 14:27:18
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -119,7 +119,8 @@ namespace TempleOfDoom.Presentation
                 }
                 LevelMapper.ApplyConnectionsToRooms(levelData.Connections, roomsById);
                 var roomConnections = LevelMapper.CreateRoomConnectionMap(levelData.Connections);
-                Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player);
+                IGameStateManager gameStateManager = new GameStateManager();
+                Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player, gameStateManager);
                 Room currentRoom = roomsById[levelData.Player.StartRoomId];
                 GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -190,6 +191,7 @@ namespace TempleOfDoom.Presentation
                 for (int x = 0; x < room.Width; x++)
                 {
                     var coords = new Coordinates(x, y);
+                    // If it's the player's position, render the player
                     if (coords.Equals(player.Position))
                     {
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
@@ -199,21 +201,34 @@ namespace TempleOfDoom.Presentation
                     else
                     {
                         var tile = room.GetTileAt(coords);
-                        if (tile is ItemTileDecorator itemTile)
+                        if (tile is DoorTile doorTile)
                         {
-                            Console.ForegroundColor = ColorManager.GetColorForItem(itemTile.Item);
-                            Console.Write($"{itemTile.Representation} ");
-                            Console.ResetColor();
-                        }
-                        else if (tile is DoorTile doorTile)
-                        {
+                            // It's a door
                             var doorColor = doorTile.GetDoorColor();
                             Console.ForegroundColor = doorColor;
                             Console.Write($"{doorTile.Representation} ");
                             Console.ResetColor();
                         }
+                        else if (tile is FloorTile floorTile)
+                        {
+                            // It's a floor tile; check for an item on it
+                            if (floorTile.Item != null)
+                            {
+                                Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
+                                Console.Write($"{floorTile.Item.Representation} ");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                // Plain floor tile
+                                Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
+                                Console.Write($"{floorTile.Representation} ");
+                                Console.ResetColor();
+                            }
+                        }
                         else
                         {
+                            // Some other tile (e.g., WallTile)
                             Console.ForegroundColor = ColorManager.GetColorForTile(tile);
                             Console.Write($"{tile.Representation} ");
                             Console.ResetColor();
@@ -381,10 +396,9 @@ namespace TempleOfDoom.Presentation.RemoveLater
 // File: TempleOfDoom.BusinessLogic\GameService.cs
 public class GameService
 {
-    private Dictionary<int, Room> _roomsById; 
+    private Dictionary<int, Room> _roomsById;
     private IGameStateManager _gameStateManager;
     private IPlayerMovementController _playerMovementController;
-    private IItemCollector _itemCollector;
     public Room CurrentRoom { get; private set; }
     public Player Player { get; private set; }
     public bool IsWin => _gameStateManager.IsWin;
@@ -396,20 +410,42 @@ public class GameService
         Dictionary<int, Room> roomsById,
         Dictionary<int, Dictionary<Direction, int>> roomConnections)
     {
-        // Removed: Instance = this;
-        _roomsById = roomsById; // CHANGED: Store a reference
+        _roomsById = roomsById;
         _gameStateManager = new GameStateManager();
+        // Count total Sankara Stones in all rooms
+        int totalStones = CountAllSankaraStones(_roomsById.Values);
+        _gameStateManager.SetTotalStones(totalStones);
         IDoorService doorService = new DoorService();
-        IItemCollector itemCollector = new ItemCollector();
-        itemCollector.InitializeTotalStones(_roomsById.Values);
-        itemCollector.SetGameStateManager(_gameStateManager);
-        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService, _roomsById); // CHANGED: pass roomsById
+        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService, _roomsById);
         IMovementStrategy movementStrategy = new DefaultMovementStrategy();
-        IPlayerMovementController movementController = new PlayerMovementController(movementStrategy, roomTransitionService, doorService, itemCollector, _gameStateManager);
-        _itemCollector = itemCollector;
-        _playerMovementController = movementController;
+        // Pass _gameStateManager so we can call MarkLose / see IsGameOver in movement
+        _playerMovementController = new PlayerMovementController(
+            movementStrategy,
+            roomTransitionService,
+            doorService,
+            _gameStateManager
+        );
         CurrentRoom = currentRoom;
         Player = player;
+    }
+    private int CountAllSankaraStones(IEnumerable<Room> rooms)
+    {
+        int count = 0;
+        foreach (var room in rooms)
+        {
+            for (int y = 0; y < room.Height; y++)
+            {
+                for (int x = 0; x < room.Width; x++)
+                {
+                    if (room.Layout[y, x] is FloorTile floorTile
+                        && floorTile.Item is SankaraStoneDecorator)
+                    {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
     }
     public void HandlePlayerMovement(Direction direction)
     {
@@ -425,53 +461,6 @@ public class GameService
     public void SetCurrentRoom(Room room)
     {
         CurrentRoom = room;
-    }
-}
-
-// File: TempleOfDoom.BusinessLogic\ItemCollector.cs
-namespace TempleOfDoom.BusinessLogic
-{
-    public class ItemCollector : IItemCollector
-    {
-        private int _totalStones;
-        private int _collectedStones;
-        private IGameStateManager _gameStateManager;
-        public void InitializeTotalStones(IEnumerable<Room> rooms)
-        {
-            _totalStones = rooms.SelectMany(r => r.Layout.Cast<ITile>())
-                .OfType<ItemTileDecorator>()
-                .Count(t => t.Item is SankaraStone);
-        }
-        public void SetGameStateManager(IGameStateManager gameStateManager)
-        {
-            _gameStateManager = gameStateManager;
-        }
-        public bool HandleItemInteraction(Player player, Room room)
-        {
-            var tile = room.GetTileAt(player.Position);
-            if (tile is ItemTileDecorator itemTile)
-            {
-                bool shouldRemove = itemTile.Item.OnPlayerEnter(player, room);
-                if (player.Lives <= 0)
-                {
-                    _gameStateManager?.MarkLose();
-                    return true;
-                }
-                if (shouldRemove)
-                {
-                    if (itemTile.Item is SankaraStone)
-                    {
-                        _collectedStones++;
-                        if (_collectedStones == _totalStones)
-                        {
-                            _gameStateManager?.MarkWin();
-                        }
-                    }
-                    room.RemoveItemAt(player.Position);
-                }
-            }
-            return false;
-        }
     }
 }
 
@@ -498,9 +487,9 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             }
             return room;
         }
-        public static Player MapPlayerDtoToPlayer(PlayerDto playerDto)
+        public static Player MapPlayerDtoToPlayer(PlayerDto playerDto, IGameStateManager gameStateManager)
         {
-            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives);
+            return new Player(playerDto.StartX, playerDto.StartY, playerDto.Lives, gameStateManager);
         }
         public static void ApplyConnectionsToRooms(List<ConnectionDto> connections, Dictionary<int, Room> rooms)
         {
@@ -604,35 +593,24 @@ namespace TempleOfDoom.BusinessLogic.Decorators
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Decorators\ItemTileDecorator.cs
+// File: TempleOfDoom.BusinessLogic\Decorators\ItemDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Decorators
 {
-    public class ItemTileDecorator : Tile
+    public abstract class ItemDecorator : IItem
     {
-        private readonly Tile _baseTile;
-        public IItem Item { get; }
-        public ItemTileDecorator(Tile baseTile, IItem item)
+        protected IItem _wrappedItem;
+        protected ItemDecorator(IItem wrappedItem)
         {
-            _baseTile = baseTile;
-            Item = item;
+            _wrappedItem = wrappedItem;
         }
-        public override string Representation => GetItemRepresentation();
-        public override bool IsWalkable => _baseTile.IsWalkable;
-        private string GetItemRepresentation()
+        public virtual string Name => _wrappedItem.Name;
+        public virtual string Representation => _wrappedItem.Representation;
+        public virtual bool IsCollectible => _wrappedItem.IsCollectible;
+        public virtual bool OnPlayerEnter(Player player, Room currentRoom)
         {
-            // Represent items with their first letter or a specific symbol
-            return Item.Name switch
-            {
-                "Sankara Stone" => "S",
-                "Key(green)" => "K",
-                "Key(red)" => "K",
-                "BoobyTrap" => "O",
-                "Disappearing BoobyTrap" => "@",
-                "Pressure Plate" => "T",
-                _ => "?"
-            };
+            // By default, just delegate to the wrapped item
+            return _wrappedItem.OnPlayerEnter(player, currentRoom);
         }
-        public ITile GetBaseTile() => _baseTile;
     }
 }
 
@@ -655,15 +633,24 @@ namespace TempleOfDoom.BusinessLogic.Factories
     {
         public IItem CreateItem(ItemDto itemDto)
         {
-            return itemDto.Type.ToLower() switch
+            // Start with an empty base item
+            IItem baseItem = new BaseItem();
+            switch (itemDto.Type.ToLower())
             {
-                "sankara stone" => new SankaraStone(),
-                "key" => new KeyItem(itemDto.Color),
-                "boobytrap" => new BoobyTrap(itemDto.Damage ?? 1),
-                "disappearing boobytrap" => new DisappearingBoobyTrap(itemDto.Damage ?? 1),
-                "pressure plate" => new PressurePlate(),
-                _ => throw new ArgumentException($"Unknown item type: {itemDto.Type}")
-            };
+                case "boobytrap":
+                    return new BoobyTrapDecorator(baseItem, itemDto.Damage ?? 1);
+                case "disappearing boobytrap":
+                    // single class that does both damage + disappearing
+                    return new DisappearingBoobyTrapDecorator(baseItem, itemDto.Damage ?? 1);
+                case "key":
+                    return new KeyDecorator(baseItem, itemDto.Color);
+                case "sankara stone":
+                    return new SankaraStoneDecorator(baseItem);
+                case "pressure plate":
+                    return new PressurePlateDecorator(baseItem);
+                default:
+                    throw new ArgumentException($"Unknown item type: {itemDto.Type}");
+            }
         }
     }
 }
@@ -764,6 +751,8 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
         void MarkWin();
         void MarkLose();
         // Possibly notify about life changes, stone count changes, etc.
+        void SetTotalStones(int total);
+        void OnSankaraStoneCollected();
     }
 }
 
@@ -773,20 +762,9 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     public interface IItem
     {
         string Name { get; }
+        string Representation { get; }     // Let each item or decorator define how it looks
         bool IsCollectible { get; }
-        bool OnPlayerEnter(Player player, Room currentRoom); 
-    }
-}
-
-// File: TempleOfDoom.BusinessLogic\Interfaces\IItemCollector.cs
-namespace TempleOfDoom.BusinessLogic.Interfaces
-{
-    public interface IItemCollector
-    {
-        void InitializeTotalStones(IEnumerable<Room> rooms);
-        bool HandleItemInteraction(Player player, Room room);
-        // Possibly a method to check if all stones collected and notify state manager
-        void SetGameStateManager(IGameStateManager gameStateManager);
+        bool OnPlayerEnter(Player player, Room currentRoom);
     }
 }
 
@@ -852,8 +830,25 @@ namespace TempleOfDoom.BusinessLogic.Manager
         public bool IsWin { get; private set; }
         public bool IsLose { get; private set; }
         public bool IsGameOver => IsWin || IsLose;
+        private int _totalStones;
+        private int _collectedStones;
         public void MarkWin() => IsWin = true;
         public void MarkLose() => IsLose = true;
+        // NEW: Called by GameService (or wherever you prefer) to initialize the total stones
+        public void SetTotalStones(int total)
+        {
+            _totalStones = total;
+            _collectedStones = 0;
+        }
+        // NEW: Called whenever the player picks up a Sankara Stone
+        public void OnSankaraStoneCollected()
+        {
+            _collectedStones++;
+            if (_collectedStones >= _totalStones)
+            {
+                MarkWin();
+            }
+        }
     }
 }
 
@@ -865,10 +860,12 @@ namespace TempleOfDoom.BusinessLogic.Models
         public Coordinates Position { get; private set; }
         public int Lives { get; set; }
         public List<IItem> Inventory { get; } = new List<IItem>();
-        public Player(int x, int y, int lives = 3)
+        private readonly IGameStateManager _gameStateManager;
+        public Player(int x, int y, int lives, IGameStateManager gameStateManager)
         {
             Position = new Coordinates(x, y);
             Lives = lives;
+            _gameStateManager = gameStateManager;
         }
         public Coordinates GetNewPosition(Direction direction)
         {
@@ -882,11 +879,10 @@ namespace TempleOfDoom.BusinessLogic.Models
         public bool TryMove(Direction direction, Room currentRoom)
         {
             Coordinates newPosition = GetNewPosition(direction);
-            // Check boundaries
             if (newPosition.X < 0 || newPosition.X >= currentRoom.Width ||
                 newPosition.Y < 0 || newPosition.Y >= currentRoom.Height)
             {
-                // Can't move inside this room; might trigger AttemptRoomTransition if standing on a door.
+                // Outside room bounds
                 return false;
             }
             if (!currentRoom.GetTileAt(newPosition).IsWalkable)
@@ -901,6 +897,11 @@ namespace TempleOfDoom.BusinessLogic.Models
             if (item.IsCollectible)
             {
                 Inventory.Add(item);
+                // If it's a Sankara Stone, let the GameStateManager know
+                if (item is SankaraStoneDecorator)
+                {
+                    _gameStateManager.OnSankaraStoneCollected();
+                }
             }
         }
     }
@@ -916,6 +917,7 @@ namespace TempleOfDoom.BusinessLogic.Models
         public string Type { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        // 2D array of tiles
         public ITile[,] Layout { get; private set; }
         public Room(int width, int height)
         {
@@ -923,34 +925,50 @@ namespace TempleOfDoom.BusinessLogic.Models
             Height = height;
             Layout = new ITile[Height, Width];
         }
-        public ITile GetTileAt(Coordinates coordinates) => Layout[coordinates.Y, coordinates.X];
+        public ITile GetTileAt(Coordinates coordinates)
+            => Layout[coordinates.Y, coordinates.X];
+        /// <summary>
+        /// Fills the Layout with walls on the outer boundary,
+        /// and floor tiles inside.
+        /// </summary>
         public void GenerateLayout()
         {
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
                 {
-                    Layout[y, x] = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+                    bool isWall =
+                        (x == 0 || y == 0 || x == Width - 1 || y == Height - 1);
+                    Layout[y, x] = isWall
                         ? (ITile)new WallTile()
-                        : new FloorTile();
+                        : new FloorTile(); // each FloorTile can hold an IItem if desired
                 }
             }
         }
+        /// <summary>
+        /// Places an item on the given FloorTile (if it’s actually a FloorTile).
+        /// </summary>
         public void PlaceItem(Coordinates position, IItem item)
         {
-            Tile.Tile baseTile = (Tile.Tile)Layout[position.Y, position.X];
-            Layout[position.Y, position.X] = new ItemTileDecorator(baseTile, item);
+            // Only set the item if the tile is a FloorTile
+            if (Layout[position.Y, position.X] is FloorTile floorTile)
+            {
+                floorTile.Item = item;
+            }
         }
+        /// <summary>
+        /// Removes an item (if any) from a FloorTile at the given position.
+        /// </summary>
         public void RemoveItemAt(Coordinates position)
         {
-            var tile = Layout[position.Y, position.X] as ItemTileDecorator;
-            if (tile != null)
+            if (Layout[position.Y, position.X] is FloorTile floorTile)
             {
-                Layout[position.Y, position.X] = tile.GetBaseTile();
+                floorTile.Item = null;
             }
         }
         public void RegisterDoor(IDoor door)
         {
+            // Keep track of any door object in this room for toggling, etc.
             if (!_doors.Contains(door))
             {
                 _doors.Add(door);
@@ -1022,46 +1040,72 @@ namespace TempleOfDoom.BusinessLogic.Services
         private readonly IMovementStrategy _movementStrategy;
         private readonly IRoomTransitionService _roomTransitionService;
         private readonly IDoorService _doorService;
-        private readonly IItemCollector _itemCollector;
         private readonly IGameStateManager _gameStateManager;
         public PlayerMovementController(
             IMovementStrategy movementStrategy,
             IRoomTransitionService roomTransitionService,
             IDoorService doorService,
-            IItemCollector itemCollector,
             IGameStateManager gameStateManager)
         {
             _movementStrategy = movementStrategy;
             _roomTransitionService = roomTransitionService;
             _doorService = doorService;
-            _itemCollector = itemCollector;
             _gameStateManager = gameStateManager;
         }
-        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom) // CHANGED
+        public bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom)
         {
-            newCurrentRoom = currentRoom; // default to currentRoom
+            newCurrentRoom = currentRoom;
             if (_gameStateManager.IsGameOver) return false;
             Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
             if (IsInsideRoom(nextPos, currentRoom))
             {
-                // Inside room movement
+                // Movement inside this room
                 if (IsPositionWalkable(currentRoom, player, nextPos))
                 {
                     player.UpdatePosition(nextPos);
-                    _itemCollector.HandleItemInteraction(player, currentRoom); // may set win/lose
+                    // Check if there's an item to interact with
+                    if (currentRoom.GetTileAt(nextPos) is FloorTile floorTile && floorTile.Item != null)
+                    {
+                        bool removeItem = floorTile.Item.OnPlayerEnter(player, currentRoom);
+                        // If player's lives are now <= 0, game over
+                        if (player.Lives <= 0)
+                        {
+                            _gameStateManager.MarkLose();
+                            return true;
+                        }
+                        // If OnPlayerEnter(...) says "true," remove the item
+                        if (removeItem)
+                        {
+                            floorTile.Item = null;
+                        }
+                    }
                     return true;
                 }
                 return false;
             }
             else
             {
-                // Attempt room transition
+                // Attempt to pass through a door to another room
                 if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
                 {
                     if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
                     {
-                        _itemCollector.HandleItemInteraction(player, nextRoom);
-                        newCurrentRoom = nextRoom; // CHANGED: Instead of setting via GameService, return it
+                        // After transitioning, the player is now in nextRoom at the door’s entry position
+                        // Optionally do the same item-check in the new room's position
+                        if (nextRoom.GetTileAt(player.Position) is FloorTile floorTile && floorTile.Item != null)
+                        {
+                            bool removeItem = floorTile.Item.OnPlayerEnter(player, nextRoom);
+                            if (player.Lives <= 0)
+                            {
+                                _gameStateManager.MarkLose();
+                                return true;
+                            }
+                            if (removeItem)
+                            {
+                                floorTile.Item = null;
+                            }
+                        }
+                        newCurrentRoom = nextRoom;
                         return true;
                     }
                 }
@@ -1228,13 +1272,12 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
         }
         public override char GetRepresentation(bool isHorizontal)
         {
-            // If you want a certain char for a colored door, override it here
-            // or fallback to the base if you only want to color it.
+            // Example: '=' for horizontal, '|' for vertical
             return isHorizontal ? '=' : '|';
         }
         public override ConsoleColor GetColor()
         {
-            // Instead of returning the wrapped door color, we do the color override
+            // Override the color based on _color
             return _color switch
             {
                 "red" => ConsoleColor.Red,
@@ -1244,8 +1287,10 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
         }
         public override bool IsOpen(Player player, Room currentRoom)
         {
-            // If the player has the matching key, we can allow open
-            bool hasMatchingKey = player.Inventory.Any(i => i is KeyItem key && key.Color.ToLower() == _color);
+            // Check if the player’s inventory contains a KeyDecorator of the matching color
+            bool hasMatchingKey = player.Inventory.Any(i => i is KeyDecorator key
+                                                         && key.Color.ToLower() == _color);
+            // Only open if the player has that key AND the wrapped door is open
             return hasMatchingKey && base.IsOpen(player, currentRoom);
         }
     }
@@ -1300,21 +1345,25 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
         }
         public override bool IsOpen(Player player, Room currentRoom)
         {
-            // Count the sankara stones in the current room
+            // Count the Sankara stones in the current room:
             int stonesInRoom = 0;
             for (int y = 0; y < currentRoom.Height; y++)
             {
                 for (int x = 0; x < currentRoom.Width; x++)
                 {
                     var tile = currentRoom.GetTileAt(new Coordinates(x, y));
-                    if (tile is ItemTileDecorator itemTile &&
-                        itemTile.Item is SankaraStone)
+                    // If the tile is a FloorTile AND 
+                    // that tile's item is a SankaraStoneDecorator, increment count
+                    if (tile is FloorTile floorTile
+                        && floorTile.Item is SankaraStoneDecorator)
                     {
                         stonesInRoom++;
                     }
                 }
             }
-            // Door only opens if base door is open AND the exact number of stones matches
+            // Door only opens if:
+            // 1) The base (wrapped) door is also open,
+            // 2) The number of stones in the room == _requiredStones
             return base.IsOpen(player, currentRoom) && (stonesInRoom == _requiredStones);
         }
         public override char GetRepresentation(bool isHorizontal)
@@ -1380,104 +1429,150 @@ namespace TempleOfDoom.BusinessLogic.Models.Doors
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Items\BoobyTrap.cs
-namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+// File: TempleOfDoom.BusinessLogic\Models\Items\BaseItem.cs
+namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+    public class BaseItem : IItem
     {
-        public class BoobyTrap : IItem
+        public string Name { get; protected set; } = "BaseItem";
+        public virtual string Representation { get; protected set; } = "?";
+        public virtual bool IsCollectible { get; protected set; } = false;
+        public BaseItem() { }
+        public BaseItem(string name, string representation, bool isCollectible)
         {
-            public int Damage { get; }
-            public string Name => "BoobyTrap";
-            public bool IsCollectible => false;
-            public BoobyTrap(int damage)
-            {
-                Damage = damage;
-            }
-            public bool OnPlayerEnter(Player player, Room currentRoom) 
-            {
-                player.Lives -= Damage;
-                return false; 
-            }
+            Name = name;
+            Representation = representation;
+            IsCollectible = isCollectible;
+        }
+        public virtual bool OnPlayerEnter(Player player, Room currentRoom)
+        {
+            // By default, do nothing; return false = do not remove the item
+            return false;
         }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Items\DisappearingBoobyTrap.cs
+// File: TempleOfDoom.BusinessLogic\Models\Items\BoobyTrapDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Item.Item
 {
-    public class DisappearingBoobyTrap : IItem
+    public class BoobyTrapDecorator : ItemDecorator
     {
-        public int Damage { get; }
-        public string Name => "Disappearing BoobyTrap";
-        public bool IsCollectible => false;
-        public DisappearingBoobyTrap(int damage)
+        private readonly int _damage;
+        public BoobyTrapDecorator(IItem wrappedItem, int damage) : base(wrappedItem)
         {
-            Damage = damage;
+            _damage = damage;
         }
-        public bool OnPlayerEnter(Player player, Room currentRoom)
+        public override string Name => "BoobyTrap"; // or combine with base, your choice
+        public override string Representation => "O"; // or "B" if you prefer
+        // It's still not collectible
+        public override bool IsCollectible => false;
+        public override bool OnPlayerEnter(Player player, Room currentRoom)
         {
-            player.Lives -= Damage;
-            return true; 
+            // Subtract lives
+            player.Lives -= _damage;
+            // Then delegate to the underlying item chain if you want
+            // or just skip. Typically, if the underlying "base" is
+            // empty, it won't do anything anyway:
+            bool baseResult = base.OnPlayerEnter(player, currentRoom);
+            // This does NOT remove itself (unless you also want “disappear”)
+            return false;
         }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Items\KeyItem.cs
+// File: TempleOfDoom.BusinessLogic\Models\Items\DisappearingBoobyTrapDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Item.Item
 {
-    public class KeyItem : IItem
+    public class DisappearingBoobyTrapDecorator : ItemDecorator
     {
-        public string Color { get; }
-        public string Name => $"Key({Color})";
-        public bool IsCollectible => true;
-        public KeyItem(string color)
+        private readonly int _damage;
+        public DisappearingBoobyTrapDecorator(IItem wrappedItem, int damage)
+            : base(wrappedItem)
         {
-            Color = color;
+            _damage = damage;
         }
-        public bool OnPlayerEnter(Player player, Room currentRoom)
+        public override string Name => "Disappearing BoobyTrap";
+        public override string Representation => "@";
+        public override bool IsCollectible => false;
+        public override bool OnPlayerEnter(Player player, Room currentRoom)
+        {
+            // Deal damage to player
+            player.Lives -= _damage;
+            // Then remove the item (return true => remove from room after stepping)
+            base.OnPlayerEnter(player, currentRoom);
+            return true;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Items\KeyDecorator.cs
+namespace TempleOfDoom.BusinessLogic.Models.Item.Item
+{
+    public class KeyDecorator : ItemDecorator
+    {
+        private readonly string _color;
+        public KeyDecorator(IItem wrappedItem, string color)
+            : base(wrappedItem)
+        {
+            _color = color;
+        }
+        public string Color => _color;  // <-- ADD THIS PROPERTY
+        public override string Name => $"Key({_color})";
+        public override string Representation => "K";
+        public override bool IsCollectible => true;
+        public override bool OnPlayerEnter(Player player, Room currentRoom)
         {
             player.CollectItem(this);
-            return true; // Remove after collection
+            return true; // remove from the floor
         }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Items\PressurePlate.cs
+// File: TempleOfDoom.BusinessLogic\Models\Items\PressurePlateDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    namespace TempleOfDoom.BusinessLogic.Models.Items
+    public class PressurePlateDecorator : ItemDecorator
     {
-        public class PressurePlate : IItem
+        public PressurePlateDecorator(IItem wrappedItem)
+            : base(wrappedItem)
         {
-            public string Name => "Pressure Plate";
-            public bool IsCollectible => false;
-            public bool OnPlayerEnter(Player player, Room currentRoom) 
+        }
+        public override string Name => "Pressure Plate";
+        public override string Representation => "T";
+        public override bool IsCollectible => false;
+        public override bool OnPlayerEnter(Player player, Room currentRoom)
+        {
+            // Toggle all togglable doors in the room
+            foreach (var door in currentRoom.GetDoors())
             {
-                foreach (var door in currentRoom.GetDoors()) 
-                {
-                    door.NotifyStateChange();
-                }
-                return false;
+                door.NotifyStateChange();
             }
+            // Let base do whatever it does 
+            base.OnPlayerEnter(player, currentRoom);
+            // Typically, pressure plates remain, so return false
+            return false;
         }
     }
 }
 
-// File: TempleOfDoom.BusinessLogic\Models\Items\SankaraStone.cs
+// File: TempleOfDoom.BusinessLogic\Models\Items\SankaraStoneDecorator.cs
 namespace TempleOfDoom.BusinessLogic.Models.Items
 {
-    namespace TempleOfDoom.BusinessLogic.Models.Items
+    public class SankaraStoneDecorator : ItemDecorator
     {
-        public class SankaraStone : IItem
+        public SankaraStoneDecorator(IItem wrappedItem)
+            : base(wrappedItem)
         {
-            public string Name => "Sankara Stone";
-            public bool IsCollectible => true;
-            public bool OnPlayerEnter(Player player, Room currentRoom)
-            {
-                player.CollectItem(this);
-                return true;
-            }
+        }
+        public override string Name => "Sankara Stone";
+        public override string Representation => "S";
+        public override bool IsCollectible => true;
+        public override bool OnPlayerEnter(Player player, Room currentRoom)
+        {
+            // Collect the stone
+            player.CollectItem(this);
+            // Remove from the room once picked up
+            return true;
         }
     }
 }
@@ -1507,7 +1602,16 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
     public class FloorTile : Tile
     {
-        public override string Representation => " ";
+        public IItem Item { get; set; }  // optional, or pass in constructor
+        public override string Representation
+        {
+            get
+            {
+                // If there's an item, show item’s representation
+                if (Item != null) return Item.Representation;
+                return " "; // empty floor
+            }
+        }
         public override bool IsWalkable => true;
     }
 }

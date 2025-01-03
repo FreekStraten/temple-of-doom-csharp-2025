@@ -15,6 +15,9 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
         void MarkWin();
         void MarkLose();
         // Possibly notify about life changes, stone count changes, etc.
+
+        void SetTotalStones(int total);
+        void OnSankaraStoneCollected();
     }
 
 }
