@@ -15,3 +15,4 @@ C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-fr
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\ref\TempleOfDoom.BusinessLogic.dll
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\Resources\TempleOfDoom.json
 C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\obj\Debug\net8.0\TempleOfDoom.BusinessLogic.sourcelink.json
+C:\Users\Freek\OneDrive\Documenten\GitHub\deelopdracht-1-24-25-temple-of-doom-freekstaten_\TempleOfDoom.BusinessLogic\bin\Debug\net8.0\CODE_TempleOfDoom_DownloadableContent.dll

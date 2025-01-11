@@ -36,6 +36,14 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 }
             }
 
+            if (roomDto.Enemies != null)
+            {
+                foreach (var enemyDto in roomDto.Enemies)
+                {
+                    room.Enemies.Add(enemyDto);
+                }
+            }
+
             return room;
         }
 

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Struct;
+using TempleOfDoom.DataAccess;
 
 namespace TempleOfDoom.Presentation
 {
@@ -19,54 +20,63 @@ namespace TempleOfDoom.Presentation
                 {
                     var coords = new Coordinates(x, y);
 
-                    // If it's the player's position, render the player
+                    // 1. Speler
                     if (coords.Equals(player.Position))
                     {
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
                         Console.Write("X ");
                         Console.ResetColor();
+                        continue;
                     }
-                    else
-                    {
-                        var tile = room.GetTileAt(coords);
 
-                        if (tile is DoorTile doorTile)
+                    // 2. Vijand?
+                    EnemyDto enemyHere = room.Enemies
+                        .FirstOrDefault(e => e.X == x && e.Y == y);
+
+                    if (enemyHere != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red; // Of een andere kleur
+                        Console.Write("E ");
+                        Console.ResetColor();
+                        continue;
+                    }
+
+                    // 3. Anders gewone tile-afhandeling
+                    var tile = room.GetTileAt(coords);
+                    if (tile is DoorTile doorTile)
+                    {
+                        var doorColor = doorTile.GetDoorColor();
+                        Console.ForegroundColor = doorColor;
+                        Console.Write($"{doorTile.Representation} ");
+                        Console.ResetColor();
+                    }
+                    else if (tile is FloorTile floorTile)
+                    {
+                        if (floorTile.Item != null)
                         {
-                            // It's a door
-                            var doorColor = doorTile.GetDoorColor();
-                            Console.ForegroundColor = doorColor;
-                            Console.Write($"{doorTile.Representation} ");
+                            Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
+                            Console.Write($"{floorTile.Item.Representation} ");
                             Console.ResetColor();
-                        }
-                        else if (tile is FloorTile floorTile)
-                        {
-                            // It's a floor tile; check for an item on it
-                            if (floorTile.Item != null)
-                            {
-                                Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
-                                Console.Write($"{floorTile.Item.Representation} ");
-                                Console.ResetColor();
-                            }
-                            else
-                            {
-                                // Plain floor tile
-                                Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
-                                Console.Write($"{floorTile.Representation} ");
-                                Console.ResetColor();
-                            }
                         }
                         else
                         {
-                            // Some other tile (e.g., WallTile)
-                            Console.ForegroundColor = ColorManager.GetColorForTile(tile);
-                            Console.Write($"{tile.Representation} ");
+                            Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
+                            Console.Write($"{floorTile.Representation} ");
                             Console.ResetColor();
                         }
+                    }
+                    else
+                    {
+                        // WallTile of iets anders
+                        Console.ForegroundColor = ColorManager.GetColorForTile(tile);
+                        Console.Write($"{tile.Representation} ");
+                        Console.ResetColor();
                     }
                 }
                 Console.WriteLine();
             }
         }
+
 
         public static void RenderPlayerStatus(Player player, Room currentRoom)
         {

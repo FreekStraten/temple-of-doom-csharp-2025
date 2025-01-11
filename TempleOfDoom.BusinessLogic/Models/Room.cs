@@ -6,12 +6,15 @@ using System.Threading.Tasks;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Struct;
 using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.DataAccess;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
     public class Room
     {
         private List<IDoor> _doors = new List<IDoor>();
+
+        public List<EnemyDto> Enemies { get; private set; } = new List<EnemyDto>();
 
         public int Id { get; set; }
         public string Type { get; set; }

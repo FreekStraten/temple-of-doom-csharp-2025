@@ -22,7 +22,7 @@ namespace TempleOfDoom.Presentation
             {
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom_Extended_A_2122.json");
                 JsonLevelLoader loader = new JsonLevelLoader();
                 LevelDto levelData = loader.LoadLevel(filePath);
 

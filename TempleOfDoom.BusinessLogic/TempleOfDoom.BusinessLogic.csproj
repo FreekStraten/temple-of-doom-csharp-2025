@@ -10,4 +10,10 @@
     <ProjectReference Include="..\TempleOfDoom.DataAccess\TempleOfDoom.DataAccess.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="CODE_TempleOfDoom_DownloadableContent">
+      <HintPath>..\..\Code-Design\TempleOfDoom\TempleOfDoom_GameLogic\CODE_TempleOfDoom_DownloadableContent.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
