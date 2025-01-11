@@ -16,4 +16,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="ExternalLibraries\CODE_TempleOfDoom_DownloadableContent.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 3-1-2025 14:27:18
+// Consolidated Code Extracted on 11-1-2025 17:23:10
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -107,7 +107,7 @@ namespace TempleOfDoom.Presentation
             if (StartGame)
             {
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
-                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom.json");
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "TempleOfDoom_Extended_A_2122.json");
                 JsonLevelLoader loader = new JsonLevelLoader();
                 LevelDto levelData = loader.LoadLevel(filePath);
                 IItemFactory itemFactory = new DefaultItemFactory();
@@ -122,7 +122,14 @@ namespace TempleOfDoom.Presentation
                 IGameStateManager gameStateManager = new GameStateManager();
                 Player player = LevelMapper.MapPlayerDtoToPlayer(levelData.Player, gameStateManager);
                 Room currentRoom = roomsById[levelData.Player.StartRoomId];
-                GameService gameService = new GameService(currentRoom, player, roomsById, roomConnections);
+                // Pass the SAME gameStateManager into the GameService constructor
+                GameService gameService = new GameService(
+                    gameStateManager,
+                    currentRoom,
+                    player,
+                    roomsById,
+                    roomConnections
+                );
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
                 bool isRunning = true;
                 while (isRunning)
@@ -186,53 +193,61 @@ namespace TempleOfDoom.Presentation
     {
         public static void RenderRoom(Room room, Player player)
         {
+            // Pre-fetch enemy positions to avoid repeating LINQ calls
+            var enemyPositions = room.GetEnemyPositions().ToList();
             for (int y = 0; y < room.Height; y++)
             {
                 for (int x = 0; x < room.Width; x++)
                 {
-                    var coords = new Coordinates(x, y);
-                    // If it's the player's position, render the player
+                    Coordinates coords = new Coordinates(x, y);
+                    // 1) Check if it's the player
                     if (coords.Equals(player.Position))
                     {
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
                         Console.Write("X ");
                         Console.ResetColor();
+                        continue;
                     }
-                    else
+                    // 2) Check if an enemy is here
+                    bool isEnemyHere = enemyPositions.Any(pos => pos.X == x && pos.Y == y);
+                    if (isEnemyHere)
                     {
-                        var tile = room.GetTileAt(coords);
-                        if (tile is DoorTile doorTile)
+                        // We don't care *what type* of enemy—just print 'E'
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Write("E ");
+                        Console.ResetColor();
+                        continue;
+                    }
+                    // 3. Tile rendering
+                    var tile = room.GetTileAt(coords);
+                    if (tile is DoorTile doorTile)
+                    {
+                        var doorColor = doorTile.GetDoorColor();
+                        Console.ForegroundColor = doorColor;
+                        Console.Write($"{doorTile.Representation} ");
+                        Console.ResetColor();
+                    }
+                    else if (tile is FloorTile floorTile)
+                    {
+                        if (floorTile.Item != null)
                         {
-                            // It's a door
-                            var doorColor = doorTile.GetDoorColor();
-                            Console.ForegroundColor = doorColor;
-                            Console.Write($"{doorTile.Representation} ");
+                            Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
+                            Console.Write($"{floorTile.Item.Representation} ");
                             Console.ResetColor();
-                        }
-                        else if (tile is FloorTile floorTile)
-                        {
-                            // It's a floor tile; check for an item on it
-                            if (floorTile.Item != null)
-                            {
-                                Console.ForegroundColor = ColorManager.GetColorForItem(floorTile.Item);
-                                Console.Write($"{floorTile.Item.Representation} ");
-                                Console.ResetColor();
-                            }
-                            else
-                            {
-                                // Plain floor tile
-                                Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
-                                Console.Write($"{floorTile.Representation} ");
-                                Console.ResetColor();
-                            }
                         }
                         else
                         {
-                            // Some other tile (e.g., WallTile)
-                            Console.ForegroundColor = ColorManager.GetColorForTile(tile);
-                            Console.Write($"{tile.Representation} ");
+                            Console.ForegroundColor = ColorManager.GetColorForTile(floorTile);
+                            Console.Write($"{floorTile.Representation} ");
                             Console.ResetColor();
                         }
+                    }
+                    else
+                    {
+                        // WallTile or other types
+                        Console.ForegroundColor = ColorManager.GetColorForTile(tile);
+                        Console.Write($"{tile.Representation} ");
+                        Console.ResetColor();
                     }
                 }
                 Console.WriteLine();
@@ -394,73 +409,101 @@ namespace TempleOfDoom.Presentation.RemoveLater
 }
 
 // File: TempleOfDoom.BusinessLogic\GameService.cs
-public class GameService
+namespace TempleOfDoom.BusinessLogic
 {
-    private Dictionary<int, Room> _roomsById;
-    private IGameStateManager _gameStateManager;
-    private IPlayerMovementController _playerMovementController;
-    public Room CurrentRoom { get; private set; }
-    public Player Player { get; private set; }
-    public bool IsWin => _gameStateManager.IsWin;
-    public bool IsLose => _gameStateManager.IsLose;
-    public bool IsGameOver => _gameStateManager.IsGameOver;
-    public GameService(
-        Room currentRoom,
-        Player player,
-        Dictionary<int, Room> roomsById,
-        Dictionary<int, Dictionary<Direction, int>> roomConnections)
+    public class GameService
     {
-        _roomsById = roomsById;
-        _gameStateManager = new GameStateManager();
-        // Count total Sankara Stones in all rooms
-        int totalStones = CountAllSankaraStones(_roomsById.Values);
-        _gameStateManager.SetTotalStones(totalStones);
-        IDoorService doorService = new DoorService();
-        IRoomTransitionService roomTransitionService = new RoomTransitionService(roomConnections, doorService, _roomsById);
-        IMovementStrategy movementStrategy = new DefaultMovementStrategy();
-        // Pass _gameStateManager so we can call MarkLose / see IsGameOver in movement
-        _playerMovementController = new PlayerMovementController(
-            movementStrategy,
-            roomTransitionService,
-            doorService,
-            _gameStateManager
-        );
-        CurrentRoom = currentRoom;
-        Player = player;
-    }
-    private int CountAllSankaraStones(IEnumerable<Room> rooms)
-    {
-        int count = 0;
-        foreach (var room in rooms)
+        private Dictionary<int, Room> _roomsById;
+        private IGameStateManager _gameStateManager;
+        private IPlayerMovementController _playerMovementController;
+        public Room CurrentRoom { get; private set; }
+        public Player Player { get; private set; }
+        public bool IsWin => _gameStateManager.IsWin;
+        public bool IsLose => _gameStateManager.IsLose;
+        public bool IsGameOver => _gameStateManager.IsGameOver;
+        public GameService(
+            IGameStateManager gameStateManager,
+            Room currentRoom,
+            Player player,
+            Dictionary<int, Room> roomsById,
+            Dictionary<int, Dictionary<Direction, int>> roomConnections)
         {
-            for (int y = 0; y < room.Height; y++)
+            _gameStateManager = gameStateManager;
+            _roomsById = roomsById;
+            int totalStones = CountAllSankaraStones(_roomsById.Values);
+            _gameStateManager.SetTotalStones(totalStones);
+            IDoorService doorService = new DoorService();
+            IRoomTransitionService roomTransitionService =
+                new RoomTransitionService(roomConnections, doorService, _roomsById);
+            IMovementStrategy movementStrategy = new DefaultMovementStrategy();
+            _playerMovementController = new PlayerMovementController(
+                movementStrategy,
+                roomTransitionService,
+                doorService,
+                _gameStateManager
+            );
+            CurrentRoom = currentRoom;
+            Player = player;
+        }
+        public void HandlePlayerMovement(Direction direction)
+        {
+            if (IsGameOver) return;
+            // 1. Move the player
+            if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
             {
-                for (int x = 0; x < room.Width; x++)
+                if (newRoom != CurrentRoom)
                 {
-                    if (room.Layout[y, x] is FloorTile floorTile
-                        && floorTile.Item is SankaraStoneDecorator)
-                    {
-                        count++;
-                    }
+                    SetCurrentRoom(newRoom);
+                }
+            }
+            // 2. Now move enemies in the current room
+            MoveEnemiesInRoom(CurrentRoom);
+            // 3. (Optional) Check if the player has collided with an enemy, etc.
+            //    For example, if your design says "if you step on an enemy, you take damage"
+            //    you'd do it here. Or you might handle that in the Move() logic, up to you.
+        }
+        private void MoveEnemiesInRoom(Room room)
+        {
+            // Snapshot the list in case enemies die mid-loop
+            var enemiesSnapshot = room.Enemies.ToList();
+            foreach (var enemy in enemiesSnapshot)
+            {
+                if (room.Enemies.Contains(enemy))
+                {
+                    enemy.Move();  // The big moment:
+                                   // This calls IField.Move() → moves to neighbor.
+                                   // Because we set CurrentField, everything should line up.
                 }
             }
         }
-        return count;
-    }
-    public void HandlePlayerMovement(Direction direction)
-    {
-        if (IsGameOver) return;
-        if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
+        public void SetCurrentRoom(Room room)
         {
-            if (newRoom != CurrentRoom)
-            {
-                SetCurrentRoom(newRoom);
-            }
+            CurrentRoom = room;
         }
-    }
-    public void SetCurrentRoom(Room room)
-    {
-        CurrentRoom = room;
+        private int CountAllSankaraStones(IEnumerable<Room> rooms)
+        {
+            int count = 0;
+            foreach (var room in rooms)
+            {
+                for (int y = 0; y < room.Height; y++)
+                {
+                    for (int x = 0; x < room.Width; x++)
+                    {
+                        if (room.Layout[y, x] is FloorTile floorTile
+                            && floorTile.Item is SankaraStoneDecorator)
+                        {
+                            count++;
+                        }
+                    }
+                }
+            }
+            return count;
+        }
+        public IEnumerable<(int X, int Y)> GetEnemyPositions(Room room)
+        {
+            // We can see the real library's Enemy here because BusinessLogic references it.
+            return room.Enemies.Select(e => (e.CurrentXLocation, e.CurrentYLocation));
+        }
     }
 }
 
@@ -477,6 +520,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 Type = roomDto.Type
             };
             room.GenerateLayout();
+            // Place items
             if (roomDto.Items != null)
             {
                 foreach (var itemDto in roomDto.Items)
@@ -485,7 +529,55 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                     room.PlaceItem(new Coordinates(itemDto.X, itemDto.Y), item);
                 }
             }
+            // Create real Enemy objects from the DLL
+            if (roomDto.Enemies != null)
+            {
+                foreach (var enemyDto in roomDto.Enemies)
+                {
+                    Enemy enemy = CreateEnemyFromDto(enemyDto);
+                    // Set the correct FieldAdapter
+                    enemy.CurrentField = room.FieldAdapters[enemyDto.Y, enemyDto.X];
+                    room.FieldAdapters[enemyDto.Y, enemyDto.X].Item = enemy;
+                    // Subscribe to OnDeath event
+                    enemy.OnDeath += (sender, e) =>
+                    {
+                        room.Enemies.Remove(enemy);
+                        // If the enemy’s field is still pointing to this enemy, clear it
+                        if (enemy.CurrentField != null)
+                        {
+                            enemy.CurrentField.Item = null;
+                        }
+                    };
+                    room.Enemies.Add(enemy);
+                }
+            }
             return room;
+        }
+        private static Enemy CreateEnemyFromDto(EnemyDto dto)
+        {
+            // For example, all enemies get 3 lives by default (or read from JSON).
+            int initialLives = 1;
+            switch (dto.Type.ToLower())
+            {
+                case "horizontal":
+                    return new HorizontallyMovingEnemy(
+                        initialLives,
+                        dto.X,
+                        dto.Y,
+                        dto.MinX,
+                        dto.MaxX
+                    );
+                case "vertical":
+                    return new VerticallyMovingEnemy(
+                        initialLives,
+                        dto.X,
+                        dto.Y,
+                        dto.MinY,
+                        dto.MaxY
+                    );
+                default:
+                    throw new ArgumentException($"Unknown enemy type: {dto.Type}");
+            }
         }
         public static Player MapPlayerDtoToPlayer(PlayerDto playerDto, IGameStateManager gameStateManager)
         {
@@ -558,6 +650,67 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             if (!map.ContainsKey(fromRoomId))
                 map[fromRoomId] = new Dictionary<Direction, int>();
             map[fromRoomId][dir] = toRoomId;
+        }
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Adapters\FieldAdapter.cs
+namespace TempleOfDoom.BusinessLogic.Adapters
+{
+    public class FieldAdapter : IField
+    {
+        private readonly Room _room;
+        private readonly int _x;
+        private readonly int _y;
+        public bool CanEnter => IsFloorOrOpenDoor();
+        // The DLL expects this to get/set the occupant (an Enemy or null).
+        // If an enemy moves onto this tile, .Item = that enemy.
+        public IPlacable Item { get; set; }
+        public FieldAdapter(Room room, int x, int y)
+        {
+            _room = room;
+            _x = x;
+            _y = y;
+        }
+        /// <summary>
+        /// direction: 0 (north), 1 (east), 2 (south), 3 (west).
+        /// </summary>
+        public IField GetNeighbour(int direction)
+        {
+            int dx = 0, dy = 0;
+            switch (direction)
+            {
+                case 0: dy = -1; break; // north
+                case 1: dx = +1; break; // east
+                case 2: dy = +1; break; // south
+                case 3: dx = -1; break; // west
+            }
+            int nx = _x + dx;
+            int ny = _y + dy;
+            // Check room bounds
+            if (nx < 0 || ny < 0 || nx >= _room.Width || ny >= _room.Height)
+            {
+                return null;
+            }
+            // Return the neighbor's adapter
+            return _room.FieldAdapters[ny, nx];
+        }
+        private bool IsFloorOrOpenDoor()
+        {
+            var tile = _room.GetTileAt(new Coordinates(_x, _y));
+            // If it's a FloorTile => passable
+            if (tile is FloorTile) return true;
+            // If it's a DoorTile => you can decide whether enemies can pass if the door is open
+            if (tile is DoorTile doorTile)
+            {
+                // By default, let's say enemies cannot pass closed doors:
+                // If you want enemies to be blocked by doors, return doorTile.Door.IsOpen(...) 
+                // But you might not have a "player" to pass. 
+                // We’ll assume “always blocked” for simplicity:
+                return false;
+            }
+            // If it's a WallTile or anything else => not passable
+            return false;
         }
     }
 }
@@ -803,6 +956,14 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
     }
 }
 
+// File: TempleOfDoom.BusinessLogic\Interfaces\IRenderableEnemy.cs
+namespace TempleOfDoom.BusinessLogic.Interfaces
+{
+    internal class IRenderableEnemy
+    {
+    }
+}
+
 // File: TempleOfDoom.BusinessLogic\Interfaces\IRoomTransitionService.cs
 namespace TempleOfDoom.BusinessLogic.Interfaces
 {
@@ -913,35 +1074,51 @@ namespace TempleOfDoom.BusinessLogic.Models
     public class Room
     {
         private List<IDoor> _doors = new List<IDoor>();
+        // Instead of storing EnemyDto, we store real Enemy objects from the DLL.
+        public List<Enemy> Enemies { get; } = new List<Enemy>();
         public int Id { get; set; }
         public string Type { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        // 2D array of tiles
+        // Your original tiles
         public ITile[,] Layout { get; private set; }
+        // A parallel array of FieldAdapters (so each tile corresponds to one FieldAdapter).
+        // This allows enemies to access the grid via IField.
+        public FieldAdapter[,] FieldAdapters { get; private set; }
         public Room(int width, int height)
         {
             Width = width;
             Height = height;
-            Layout = new ITile[Height, Width];
+            // We now create both Layout and FieldAdapters in GenerateLayout().
         }
         public ITile GetTileAt(Coordinates coordinates)
-            => Layout[coordinates.Y, coordinates.X];
+        {
+            return Layout[coordinates.Y, coordinates.X];
+        }
         /// <summary>
-        /// Fills the Layout with walls on the outer boundary,
-        /// and floor tiles inside.
+        /// Fills the Layout with walls on the outer boundary, floor tiles inside,
+        /// and creates matching FieldAdapters for each cell.
         /// </summary>
         public void GenerateLayout()
         {
+            Layout = new ITile[Height, Width];
+            FieldAdapters = new FieldAdapter[Height, Width];
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
                 {
-                    bool isWall =
-                        (x == 0 || y == 0 || x == Width - 1 || y == Height - 1);
-                    Layout[y, x] = isWall
-                        ? (ITile)new WallTile()
-                        : new FloorTile(); // each FloorTile can hold an IItem if desired
+                    bool isWall = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1);
+                    if (isWall)
+                    {
+                        Layout[y, x] = new WallTile();
+                    }
+                    else
+                    {
+                        Layout[y, x] = new FloorTile();
+                    }
+                    // Create a FieldAdapter for the (x,y) cell that wraps this room & tile
+                    FieldAdapter adapter = new FieldAdapter(this, x, y);
+                    FieldAdapters[y, x] = adapter;
                 }
             }
         }
@@ -950,7 +1127,6 @@ namespace TempleOfDoom.BusinessLogic.Models
         /// </summary>
         public void PlaceItem(Coordinates position, IItem item)
         {
-            // Only set the item if the tile is a FloorTile
             if (Layout[position.Y, position.X] is FloorTile floorTile)
             {
                 floorTile.Item = item;
@@ -968,13 +1144,17 @@ namespace TempleOfDoom.BusinessLogic.Models
         }
         public void RegisterDoor(IDoor door)
         {
-            // Keep track of any door object in this room for toggling, etc.
             if (!_doors.Contains(door))
             {
                 _doors.Add(door);
             }
         }
         public IEnumerable<IDoor> GetDoors() => _doors;
+        public IEnumerable<Coordinates> GetEnemyPositions()
+        {
+            // For each Enemy, create a Coordinates for its current location:
+            return Enemies.Select(e => new Coordinates(e.CurrentXLocation, e.CurrentYLocation));
+        }
     }
 }
 
@@ -1660,6 +1840,21 @@ namespace TempleOfDoom.DataAccess
     }
 }
 
+// File: TempleOfDoom.DataAccess\EnemyDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class EnemyDto
+    {
+        public string Type { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int MinX { get; set; }
+        public int MinY { get; set; }
+        public int MaxX { get; set; }
+        public int MaxY { get; set; }
+    }
+}
+
 // File: TempleOfDoom.DataAccess\ItemDto.cs
 namespace TempleOfDoom.DataAccess
 {
@@ -1729,6 +1924,7 @@ namespace TempleOfDoom.DataAccess
         public int Width { get; set; }
         public int Height { get; set; }
         public List<ItemDto> Items { get; set; }
+        public List<EnemyDto> Enemies { get; set; }
     }
 }
 

@@ -14,13 +14,16 @@ namespace TempleOfDoom.Presentation
     {
         public static void RenderRoom(Room room, Player player)
         {
+            // Pre-fetch enemy positions to avoid repeating LINQ calls
+            var enemyPositions = room.GetEnemyPositions().ToList();
+
             for (int y = 0; y < room.Height; y++)
             {
                 for (int x = 0; x < room.Width; x++)
                 {
-                    var coords = new Coordinates(x, y);
+                    Coordinates coords = new Coordinates(x, y);
 
-                    // 1. Speler
+                    // 1) Check if it's the player
                     if (coords.Equals(player.Position))
                     {
                         Console.ForegroundColor = ColorManager.GetColorForPlayer();
@@ -29,19 +32,18 @@ namespace TempleOfDoom.Presentation
                         continue;
                     }
 
-                    // 2. Vijand?
-                    EnemyDto enemyHere = room.Enemies
-                        .FirstOrDefault(e => e.X == x && e.Y == y);
-
-                    if (enemyHere != null)
+                    // 2) Check if an enemy is here
+                    bool isEnemyHere = enemyPositions.Any(pos => pos.X == x && pos.Y == y);
+                    if (isEnemyHere)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red; // Of een andere kleur
+                        // We don't care *what type* of enemy—just print 'E'
+                        Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write("E ");
                         Console.ResetColor();
                         continue;
                     }
 
-                    // 3. Anders gewone tile-afhandeling
+                    // 3. Tile rendering
                     var tile = room.GetTileAt(coords);
                     if (tile is DoorTile doorTile)
                     {
@@ -67,7 +69,7 @@ namespace TempleOfDoom.Presentation
                     }
                     else
                     {
-                        // WallTile of iets anders
+                        // WallTile or other types
                         Console.ForegroundColor = ColorManager.GetColorForTile(tile);
                         Console.Write($"{tile.Representation} ");
                         Console.ResetColor();
@@ -76,6 +78,7 @@ namespace TempleOfDoom.Presentation
                 Console.WriteLine();
             }
         }
+
 
 
         public static void RenderPlayerStatus(Player player, Room currentRoom)

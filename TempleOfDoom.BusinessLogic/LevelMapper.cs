@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace TempleOfDoom.BusinessLogic.Mappers
 {
+    using CODE_TempleOfDoom_DownloadableContent;
     using TempleOfDoom.BusinessLogic.Decorators;
     using TempleOfDoom.BusinessLogic.Enum;
     using TempleOfDoom.BusinessLogic.Factories;
@@ -27,6 +28,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
             };
             room.GenerateLayout();
 
+            // Place items
             if (roomDto.Items != null)
             {
                 foreach (var itemDto in roomDto.Items)
@@ -36,15 +38,61 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 }
             }
 
+            // Create real Enemy objects from the DLL
             if (roomDto.Enemies != null)
             {
                 foreach (var enemyDto in roomDto.Enemies)
                 {
-                    room.Enemies.Add(enemyDto);
+                    Enemy enemy = CreateEnemyFromDto(enemyDto);
+
+                    // Set the correct FieldAdapter
+                    enemy.CurrentField = room.FieldAdapters[enemyDto.Y, enemyDto.X];
+                    room.FieldAdapters[enemyDto.Y, enemyDto.X].Item = enemy;
+
+                    // Subscribe to OnDeath event
+                    enemy.OnDeath += (sender, e) =>
+                    {
+                        room.Enemies.Remove(enemy);
+                        // If the enemy’s field is still pointing to this enemy, clear it
+                        if (enemy.CurrentField != null)
+                        {
+                            enemy.CurrentField.Item = null;
+                        }
+                    };
+
+                    room.Enemies.Add(enemy);
                 }
             }
 
             return room;
+        }
+
+        private static Enemy CreateEnemyFromDto(EnemyDto dto)
+        {
+            // For example, all enemies get 3 lives by default (or read from JSON).
+            int initialLives = 1;
+
+            switch (dto.Type.ToLower())
+            {
+                case "horizontal":
+                    return new HorizontallyMovingEnemy(
+                        initialLives,
+                        dto.X,
+                        dto.Y,
+                        dto.MinX,
+                        dto.MaxX
+                    );
+                case "vertical":
+                    return new VerticallyMovingEnemy(
+                        initialLives,
+                        dto.X,
+                        dto.Y,
+                        dto.MinY,
+                        dto.MaxY
+                    );
+                default:
+                    throw new ArgumentException($"Unknown enemy type: {dto.Type}");
+            }
         }
 
         public static Player MapPlayerDtoToPlayer(PlayerDto playerDto, IGameStateManager gameStateManager)

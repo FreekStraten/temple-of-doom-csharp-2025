@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TempleOfDoom.BusinessLogic\TempleOfDoom.BusinessLogic.csproj" />
-    <ProjectReference Include="..\TempleOfDoom.DataAccess\TempleOfDoom.DataAccess.csproj" />
   </ItemGroup>
 
 </Project>

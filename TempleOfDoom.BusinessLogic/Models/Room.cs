@@ -7,6 +7,8 @@ using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Struct;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.DataAccess;
+using CODE_TempleOfDoom_DownloadableContent;
+using TempleOfDoom.BusinessLogic.Adapters;
 
 namespace TempleOfDoom.BusinessLogic.Models
 {
@@ -14,42 +16,59 @@ namespace TempleOfDoom.BusinessLogic.Models
     {
         private List<IDoor> _doors = new List<IDoor>();
 
-        public List<EnemyDto> Enemies { get; private set; } = new List<EnemyDto>();
+        // Instead of storing EnemyDto, we store real Enemy objects from the DLL.
+        public List<Enemy> Enemies { get; } = new List<Enemy>();
 
         public int Id { get; set; }
         public string Type { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
 
-        // 2D array of tiles
+        // Your original tiles
         public ITile[,] Layout { get; private set; }
+
+        // A parallel array of FieldAdapters (so each tile corresponds to one FieldAdapter).
+        // This allows enemies to access the grid via IField.
+        public FieldAdapter[,] FieldAdapters { get; private set; }
 
         public Room(int width, int height)
         {
             Width = width;
             Height = height;
-            Layout = new ITile[Height, Width];
+            // We now create both Layout and FieldAdapters in GenerateLayout().
         }
 
         public ITile GetTileAt(Coordinates coordinates)
-            => Layout[coordinates.Y, coordinates.X];
+        {
+            return Layout[coordinates.Y, coordinates.X];
+        }
 
         /// <summary>
-        /// Fills the Layout with walls on the outer boundary,
-        /// and floor tiles inside.
+        /// Fills the Layout with walls on the outer boundary, floor tiles inside,
+        /// and creates matching FieldAdapters for each cell.
         /// </summary>
         public void GenerateLayout()
         {
+            Layout = new ITile[Height, Width];
+            FieldAdapters = new FieldAdapter[Height, Width];
+
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
                 {
-                    bool isWall =
-                        (x == 0 || y == 0 || x == Width - 1 || y == Height - 1);
+                    bool isWall = (x == 0 || y == 0 || x == Width - 1 || y == Height - 1);
+                    if (isWall)
+                    {
+                        Layout[y, x] = new WallTile();
+                    }
+                    else
+                    {
+                        Layout[y, x] = new FloorTile();
+                    }
 
-                    Layout[y, x] = isWall
-                        ? (ITile)new WallTile()
-                        : new FloorTile(); // each FloorTile can hold an IItem if desired
+                    // Create a FieldAdapter for the (x,y) cell that wraps this room & tile
+                    FieldAdapter adapter = new FieldAdapter(this, x, y);
+                    FieldAdapters[y, x] = adapter;
                 }
             }
         }
@@ -59,7 +78,6 @@ namespace TempleOfDoom.BusinessLogic.Models
         /// </summary>
         public void PlaceItem(Coordinates position, IItem item)
         {
-            // Only set the item if the tile is a FloorTile
             if (Layout[position.Y, position.X] is FloorTile floorTile)
             {
                 floorTile.Item = item;
@@ -79,7 +97,6 @@ namespace TempleOfDoom.BusinessLogic.Models
 
         public void RegisterDoor(IDoor door)
         {
-            // Keep track of any door object in this room for toggling, etc.
             if (!_doors.Contains(door))
             {
                 _doors.Add(door);
@@ -87,5 +104,11 @@ namespace TempleOfDoom.BusinessLogic.Models
         }
 
         public IEnumerable<IDoor> GetDoors() => _doors;
+
+        public IEnumerable<Coordinates> GetEnemyPositions()
+        {
+            // For each Enemy, create a Coordinates for its current location:
+            return Enemies.Select(e => new Coordinates(e.CurrentXLocation, e.CurrentYLocation));
+        }
     }
 }

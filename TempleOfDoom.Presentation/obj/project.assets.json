@@ -41,8 +41,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
-      "TempleOfDoom.BusinessLogic >= 1.0.0",
-      "TempleOfDoom.DataAccess >= 1.0.0"
+      "TempleOfDoom.BusinessLogic >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -79,9 +78,6 @@
           "projectReferences": {
             "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.BusinessLogic\\TempleOfDoom.BusinessLogic.csproj": {
               "projectPath": "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.BusinessLogic\\TempleOfDoom.BusinessLogic.csproj"
-            },
-            "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj": {
-              "projectPath": "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj"
             }
           }
         }
