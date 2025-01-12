@@ -79,16 +79,47 @@ namespace TempleOfDoom.BusinessLogic
 
         private void MoveEnemiesInRoom(Room room)
         {
-            // Snapshot the list in case enemies die mid-loop
             var enemiesSnapshot = room.Enemies.ToList();
-
             foreach (var enemy in enemiesSnapshot)
             {
-                if (room.Enemies.Contains(enemy))
+                if (!room.Enemies.Contains(enemy)) continue;
+
+                // 1) Move once
+                enemy.Move();
+
+                // 2) Then do a loop while they are on ice
+                SlideEnemyIfOnIce(enemy, room);
+            }
+        }
+
+        private void SlideEnemyIfOnIce(Enemy enemy, Room room)
+        {
+            // We'll do up to 50 consecutive slides, same reasoning as player (prevent infinite loops)
+            for (int i = 0; i < 50; i++)
+            {
+                // 1) Check if the enemy’s current tile is ice
+                //    Because we cannot read the tile from enemy directly, we do:
+                //    (enemy.CurrentXLocation, enemy.CurrentYLocation) => room.GetTileAt(...)
+                var ex = enemy.CurrentXLocation;
+                var ey = enemy.CurrentYLocation;
+                if (ex < 0 || ex >= room.Width || ey < 0 || ey >= room.Height) break;
+
+                var tile = room.GetTileAt(new Coordinates(ex, ey));
+                if (tile is IceTile)
                 {
-                    enemy.Move();  // The big moment:
-                                   // This calls IField.Move() → moves to neighbor.
-                                   // Because we set CurrentField, everything should line up.
+                    // 2) If it's ice, we want enemy to 'move again'
+                    //    But .Move() uses the same direction as last time. 
+                    //    That is stored in `CurrentDirectionX` / `CurrentDirectionY` 
+                    //    inside the enemy. So calling `.Move()` again *should* attempt
+                    //    the next tile in the same direction, unless the DLL changes direction
+                    //    due to boundary checks.
+
+                    enemy.Move();  // attempt another step
+                }
+                else
+                {
+                    // Not ice => break
+                    break;
                 }
             }
         }

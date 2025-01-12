@@ -3,6 +3,7 @@ using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Tile;
 using TempleOfDoom.BusinessLogic.Models;
 using TempleOfDoom.BusinessLogic.Struct;
+using TempleOfDoom.BusinessLogic.Helpers;
 
 namespace TempleOfDoom.BusinessLogic.Services
 {
@@ -28,90 +29,169 @@ namespace TempleOfDoom.BusinessLogic.Services
         public bool TryMovePlayer(Player player, Room currentRoom, Direction direction, out Room newCurrentRoom)
         {
             newCurrentRoom = currentRoom;
-            if (_gameStateManager.IsGameOver) return false;
 
-            // 1) Determine the next position (inside the same room) the player wants to move to
+            // If game over, do nothing
+            if (_gameStateManager.IsGameOver)
+                return false;
+
+            // 1) Determine the next in-room position (just a single tile step).
             Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
 
-            // 2) If that position is still within the current room’s bounds...
+            // 2) If that position is within the bounds of the room...
             if (IsInsideRoom(nextPos, currentRoom))
             {
-                // 2a) Check if the tile is walkable (floor or open door)
+                // 2a) Check if that tile is walkable
                 if (IsPositionWalkable(currentRoom, player, nextPos))
                 {
-                    // 2b) Move the player
+                    // 2b) Move the player onto that tile
                     player.UpdatePosition(nextPos);
 
-                    // 2c) Check if there's an item on the floor
-                    if (currentRoom.GetTileAt(nextPos) is FloorTile floorTile && floorTile.Item != null)
+                    // 2c) Check for any item on that tile
+                    HandleItemOnNewPosition(player, currentRoom, nextPos);
+                    if (player.Lives <= 0)
                     {
-                        bool removeItem = floorTile.Item.OnPlayerEnter(player, currentRoom);
-
-                        // If the item damaged the player to 0 or below, game over
-                        if (player.Lives <= 0)
-                        {
-                            _gameStateManager.MarkLose();
-                            return true;
-                        }
-
-                        // If OnPlayerEnter(...) said "true," remove item from the tile
-                        if (removeItem)
-                        {
-                            floorTile.Item = null;
-                        }
-                    }
-
-                    // ---------------------------------------------------------
-                    // 3) NEW CODE: If the player is now standing on a LadderTile,
-                    //    do an automatic ladder transition to the connected room.
-                    // ---------------------------------------------------------
-                    if (currentRoom.GetTileAt(nextPos) is LadderTile ladderTile)
-                    {
-                        // Get the target room
-                        Room ladderTargetRoom = _roomTransitionService.FindRoomById(ladderTile.ConnectedRoomId);
-
-                        // Move the player to that ladder’s targetCoordinates in the new room
-                        player.UpdatePosition(ladderTile.TargetCoordinates);
-
-                        // Return that new room as our "currentRoom"
-                        newCurrentRoom = ladderTargetRoom;
+                        // Player died from an item (e.g. boobytrap)
+                        _gameStateManager.MarkLose();
                         return true;
                     }
 
-                    // Otherwise, we just moved within the same room
+                    // 2d) Check if that tile is a LadderTile => might instantly move to a new room
+                    if (currentRoom.GetTileAt(nextPos) is LadderTile ladderTile)
+                    {
+                        // Handle the ladder transition
+                        newCurrentRoom = HandleLadderTransition(player, ladderTile);
+                        return true;
+                    }
+
+                    // 2e) Finally, if the tile is ice, keep sliding
+                    SlidePlayerIfOnIce(player, ref newCurrentRoom, direction);
+
                     return true;
                 }
-                return false;
+                else
+                {
+                    // Tile isn't walkable => cannot move there
+                    return false;
+                }
             }
             else
             {
-                // 4) We are out-of-bounds => try passing through a door to another room
+                // 3) We’re out-of-bounds, so see if there’s a door transition to another room
                 if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
                 {
-                    if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
+                    // Actually transition rooms
+                    if (_roomTransitionService.TryTransition(currentRoom, player, direction, out Room nextRoom))
                     {
-                        // After transitioning, the player is now in nextRoom at the door’s entry position
-                        // Possibly also pick up an item if there's one on the floor in the new position
-                        if (nextRoom.GetTileAt(player.Position) is FloorTile floorTile && floorTile.Item != null)
+                        // After transitioning, the player is in nextRoom at the door’s entry position
+                        // Check if there’s an item in that new position
+                        HandleItemOnNewPosition(player, nextRoom, player.Position);
+                        if (player.Lives <= 0)
                         {
-                            bool removeItem = floorTile.Item.OnPlayerEnter(player, nextRoom);
-                            if (player.Lives <= 0)
-                            {
-                                _gameStateManager.MarkLose();
-                                return true;
-                            }
-                            if (removeItem)
-                            {
-                                floorTile.Item = null;
-                            }
+                            _gameStateManager.MarkLose();
+                            newCurrentRoom = nextRoom;
+                            return true;
                         }
+
+                        // New room is set
                         newCurrentRoom = nextRoom;
                         return true;
                     }
                 }
+
+                // No valid door or transition => can’t move
+                return false;
             }
-            return false;
         }
+
+        /// <summary>
+        /// Check if there's an item on the floor at `pos` and call OnPlayerEnter.
+        /// Remove the item if the item so indicates.
+        /// </summary>
+        private void HandleItemOnNewPosition(Player player, Room room, Coordinates pos)
+        {
+            var tile = room.GetTileAt(pos);
+            if (tile is FloorTile floorTile && floorTile.Item != null)
+            {
+                bool removeItem = floorTile.Item.OnPlayerEnter(player, room);
+                if (removeItem)
+                {
+                    floorTile.Item = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Move the player to the LadderTile's connected room & position.
+        /// Returns the new Room the player ends up in.
+        /// </summary>
+        private Room HandleLadderTransition(Player player, LadderTile ladderTile)
+        {
+            // Find the target room via the roomTransitionService (or a direct dictionary).
+            Room targetRoom = _roomTransitionService.FindRoomById(ladderTile.ConnectedRoomId);
+
+            // Teleport player to the target coordinates in the new room
+            player.UpdatePosition(ladderTile.TargetCoordinates);
+
+            return targetRoom;
+        }
+
+
+        /// <summary>
+        /// Continues moving the player in the same `direction` if the tile is ice.
+        /// Updates the currentRoom reference if a ladder or door transition occurs mid-slide.
+        /// </summary>
+        private void SlidePlayerIfOnIce(Player player, ref Room currentRoom, Direction direction)
+        {
+            // Safety counter to avoid infinite loops
+            for (int i = 0; i < 50; i++)
+            {
+                // Check the tile the player is currently standing on
+                var tile = currentRoom.GetTileAt(player.Position);
+                if (tile is IceTile)
+                {
+                    // Calculate the next position in the same direction
+                    Coordinates movement = DirectionHelper.ToCoordinates(direction);
+                    Coordinates nextPos = player.Position + movement;
+
+                    // If next position is out of bounds => done sliding
+                    if (!IsInsideRoom(nextPos, currentRoom))
+                        break;
+
+                    // If next tile is not walkable => done sliding
+                    if (!IsPositionWalkable(currentRoom, player, nextPos))
+                        break;
+
+                    // Move onto that tile
+                    player.UpdatePosition(nextPos);
+
+                    // Handle any item on the tile
+                    HandleItemOnNewPosition(player, currentRoom, nextPos);
+                    if (player.Lives <= 0)
+                    {
+                        // Player died mid-slide
+                        _gameStateManager.MarkLose();
+                        return;
+                    }
+
+                    // If it’s a LadderTile, instantly climb => end sliding
+                    if (currentRoom.GetTileAt(nextPos) is LadderTile ladderTile)
+                    {
+                        currentRoom = HandleLadderTransition(player, ladderTile);
+                        // Once you switch rooms, there's no more sliding 
+                        break;
+                    }
+                }
+                else
+                {
+                    // Not on ice => stop sliding
+                    break;
+                }
+            }
+        }
+
+
+
+
 
 
         private bool IsInsideRoom(Coordinates pos, Room room)
