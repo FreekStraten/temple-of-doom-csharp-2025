@@ -189,11 +189,6 @@ namespace TempleOfDoom.BusinessLogic.Services
             }
         }
 
-
-
-
-
-
         private bool IsInsideRoom(Coordinates pos, Room room)
         {
             return pos.X >= 0 && pos.X < room.Width && pos.Y >= 0 && pos.Y < room.Height;
