@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TempleOfDoom.DataAccess")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cd4dc63cb35ffd59c776294f4433d63336bed852")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e2e0f77236d4dc4bbb50934a09254ad5442d2f5")]
 [assembly: System.Reflection.AssemblyProductAttribute("TempleOfDoom.DataAccess")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TempleOfDoom.DataAccess")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

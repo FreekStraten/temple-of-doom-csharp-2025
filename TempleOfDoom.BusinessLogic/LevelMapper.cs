@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CODE_TempleOfDoom_DownloadableContent;
+using TempleOfDoom.BusinessLogic.Adapters;
 using TempleOfDoom.BusinessLogic.Decorators;
 using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Factories;
@@ -29,9 +30,26 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 Id = roomDto.Id,
                 Type = roomDto.Type
             };
+
+            // 1) Generate layout with normal FloorTile / WallTile
             room.GenerateLayout();
 
-            // Place items
+            // 2) If this room has special floor tiles (like ice), overwrite them
+            if (roomDto.SpecialFloorTiles != null)
+            {
+                foreach (var special in roomDto.SpecialFloorTiles)
+                {
+                    if (special.Type?.ToLower() == "ice")
+                    {
+                        room.Layout[special.Y, special.X] = new IceTile();
+                        // Update the FieldAdapter if needed
+                        room.FieldAdapters[special.Y, special.X]
+                            = new FieldAdapter(room, special.X, special.Y);
+                    }
+                }
+            }
+
+            // 3) Place items (if any)
             if (roomDto.Items != null)
             {
                 foreach (var itemDto in roomDto.Items)
@@ -41,34 +59,29 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 }
             }
 
-            // Create real Enemy objects from the DLL
+            // 4) Create + place enemies (if any)
             if (roomDto.Enemies != null)
             {
                 foreach (var enemyDto in roomDto.Enemies)
                 {
                     Enemy enemy = CreateEnemyFromDto(enemyDto);
-
-                    // Set the correct FieldAdapter
                     enemy.CurrentField = room.FieldAdapters[enemyDto.Y, enemyDto.X];
                     room.FieldAdapters[enemyDto.Y, enemyDto.X].Item = enemy;
-
-                    // Subscribe to OnDeath event
                     enemy.OnDeath += (sender, e) =>
                     {
                         room.Enemies.Remove(enemy);
-                        // If the enemy’s field is still pointing to this enemy, clear it
                         if (enemy.CurrentField != null)
                         {
                             enemy.CurrentField.Item = null;
                         }
                     };
-
                     room.Enemies.Add(enemy);
                 }
             }
 
             return room;
         }
+
 
         private static Enemy CreateEnemyFromDto(EnemyDto dto)
         {

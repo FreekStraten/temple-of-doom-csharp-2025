@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 12-1-2025 11:31:50
+// Consolidated Code Extracted on 12-1-2025 12:19:53
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -570,6 +570,8 @@ namespace TempleOfDoom.BusinessLogic.Mappers
 {
     public static class LevelMapper
     {
+            private static Dictionary<(int roomId, int x, int y), (int roomId, int x, int y)> _ladderLookup 
+        = new Dictionary<(int, int, int), (int, int, int)>();
         public static Room MapRoomDtoToRoom(RoomDto roomDto, IItemFactory itemFactory)
         {
             var room = new Room(roomDto.Width, roomDto.Height)
@@ -577,8 +579,23 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 Id = roomDto.Id,
                 Type = roomDto.Type
             };
+            // 1) Generate layout with normal FloorTile / WallTile
             room.GenerateLayout();
-            // Place items
+            // 2) If this room has special floor tiles (like ice), overwrite them
+            if (roomDto.SpecialFloorTiles != null)
+            {
+                foreach (var special in roomDto.SpecialFloorTiles)
+                {
+                    if (special.Type?.ToLower() == "ice")
+                    {
+                        room.Layout[special.Y, special.X] = new IceTile();
+                        // Update the FieldAdapter if needed
+                        room.FieldAdapters[special.Y, special.X]
+                            = new FieldAdapter(room, special.X, special.Y);
+                    }
+                }
+            }
+            // 3) Place items (if any)
             if (roomDto.Items != null)
             {
                 foreach (var itemDto in roomDto.Items)
@@ -587,20 +604,17 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                     room.PlaceItem(new Coordinates(itemDto.X, itemDto.Y), item);
                 }
             }
-            // Create real Enemy objects from the DLL
+            // 4) Create + place enemies (if any)
             if (roomDto.Enemies != null)
             {
                 foreach (var enemyDto in roomDto.Enemies)
                 {
                     Enemy enemy = CreateEnemyFromDto(enemyDto);
-                    // Set the correct FieldAdapter
                     enemy.CurrentField = room.FieldAdapters[enemyDto.Y, enemyDto.X];
                     room.FieldAdapters[enemyDto.Y, enemyDto.X].Item = enemy;
-                    // Subscribe to OnDeath event
                     enemy.OnDeath += (sender, e) =>
                     {
                         room.Enemies.Remove(enemy);
-                        // If the enemy’s field is still pointing to this enemy, clear it
                         if (enemy.CurrentField != null)
                         {
                             enemy.CurrentField.Item = null;
@@ -645,21 +659,49 @@ namespace TempleOfDoom.BusinessLogic.Mappers
         {
             foreach (var connection in connections)
             {
-                // Apply to north/south
+                // --------------------------------------
+                // Existing DOOR logic (NORTH, SOUTH, etc.)
+                // --------------------------------------
                 if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
                 {
                     IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
                     CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, door);
                     CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, door);
                 }
-                // East/West
                 if (connection.EAST.HasValue && connection.WEST.HasValue)
                 {
                     IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
                     CreateDoorTileForRoom(rooms[connection.EAST.Value], Direction.West, door);
                     CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, door);
                 }
-                // If in part 2 you have UPPER/LOWER or portals, you'd handle them here similarly.
+                // --------------------------------------
+                // NEW LADDER LOGIC
+                // --------------------------------------
+                if (connection.UPPER.HasValue && connection.LOWER.HasValue && connection.Ladder != null)
+                {
+                    // Identify which rooms are upper vs lower
+                    var upperRoom = rooms[connection.UPPER.Value];
+                    var lowerRoom = rooms[connection.LOWER.Value];
+                    // Ladder positions within each room
+                    var ladderUpX = connection.Ladder.upperX;
+                    var ladderUpY = connection.Ladder.upperY;
+                    var ladderDownX = connection.Ladder.lowerX;
+                    var ladderDownY = connection.Ladder.lowerY;
+                    // 1) Create a LadderTile in the upper room that leads DOWN
+                    //    That means it teleports us to the "lower" room at (ladderDownX, ladderDownY).
+                    var ladderTileDown = new LadderTile(
+                        connectedRoomId: connection.LOWER.Value,
+                        targetCoordinates: new Coordinates(ladderDownX, ladderDownY)
+                    );
+                    upperRoom.Layout[ladderUpY, ladderUpX] = ladderTileDown;
+                    // 2) Create a LadderTile in the lower room that leads UP
+                    //    That means it teleports us to the "upper" room at (ladderUpX, ladderUpY).
+                    var ladderTileUp = new LadderTile(
+                        connectedRoomId: connection.UPPER.Value,
+                        targetCoordinates: new Coordinates(ladderUpX, ladderUpY)
+                    );
+                    lowerRoom.Layout[ladderDownY, ladderDownX] = ladderTileUp;
+                }
             }
         }
         private static void CreateDoorTileForRoom(Room room, Direction direction, IDoor door)
@@ -1027,6 +1069,7 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
 {
     public interface IRoomTransitionService
     {
+        Room FindRoomById(int roomId);
         bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom);
     }
 }
@@ -1294,42 +1337,60 @@ namespace TempleOfDoom.BusinessLogic.Services
         {
             newCurrentRoom = currentRoom;
             if (_gameStateManager.IsGameOver) return false;
+            // 1) Determine the next position (inside the same room) the player wants to move to
             Coordinates nextPos = _movementStrategy.GetNextPosition(player, currentRoom, direction);
+            // 2) If that position is still within the current room’s bounds...
             if (IsInsideRoom(nextPos, currentRoom))
             {
-                // Movement inside this room
+                // 2a) Check if the tile is walkable (floor or open door)
                 if (IsPositionWalkable(currentRoom, player, nextPos))
                 {
+                    // 2b) Move the player
                     player.UpdatePosition(nextPos);
-                    // Check if there's an item to interact with
+                    // 2c) Check if there's an item on the floor
                     if (currentRoom.GetTileAt(nextPos) is FloorTile floorTile && floorTile.Item != null)
                     {
                         bool removeItem = floorTile.Item.OnPlayerEnter(player, currentRoom);
-                        // If player's lives are now <= 0, game over
+                        // If the item damaged the player to 0 or below, game over
                         if (player.Lives <= 0)
                         {
                             _gameStateManager.MarkLose();
                             return true;
                         }
-                        // If OnPlayerEnter(...) says "true," remove the item
+                        // If OnPlayerEnter(...) said "true," remove item from the tile
                         if (removeItem)
                         {
                             floorTile.Item = null;
                         }
                     }
+                    // ---------------------------------------------------------
+                    // 3) NEW CODE: If the player is now standing on a LadderTile,
+                    //    do an automatic ladder transition to the connected room.
+                    // ---------------------------------------------------------
+                    if (currentRoom.GetTileAt(nextPos) is LadderTile ladderTile)
+                    {
+                        // Get the target room
+                        Room ladderTargetRoom = _roomTransitionService.FindRoomById(ladderTile.ConnectedRoomId);
+                        // Move the player to that ladder’s targetCoordinates in the new room
+                        player.UpdatePosition(ladderTile.TargetCoordinates);
+                        // Return that new room as our "currentRoom"
+                        newCurrentRoom = ladderTargetRoom;
+                        return true;
+                    }
+                    // Otherwise, we just moved within the same room
                     return true;
                 }
                 return false;
             }
             else
             {
-                // Attempt to pass through a door to another room
+                // 4) We are out-of-bounds => try passing through a door to another room
                 if (_doorService.CanPassThroughDoor(player, currentRoom, direction))
                 {
                     if (_roomTransitionService.TryTransition(currentRoom, player, direction, out var nextRoom))
                     {
                         // After transitioning, the player is now in nextRoom at the door’s entry position
-                        // Optionally do the same item-check in the new room's position
+                        // Possibly also pick up an item if there's one on the floor in the new position
                         if (nextRoom.GetTileAt(player.Position) is FloorTile floorTile && floorTile.Item != null)
                         {
                             bool removeItem = floorTile.Item.OnPlayerEnter(player, nextRoom);
@@ -1373,12 +1434,15 @@ namespace TempleOfDoom.BusinessLogic.Services
     {
         private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
         private readonly IDoorService _doorService;
-        private readonly Dictionary<int, Room> _roomsById; 
-        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService, Dictionary<int, Room> roomsById) 
+        private readonly Dictionary<int, Room> _roomsById;
+        public RoomTransitionService(
+               Dictionary<int, Dictionary<Direction, int>> roomConnections,
+               IDoorService doorService,
+               Dictionary<int, Room> roomsById)
         {
             _roomConnections = roomConnections;
             _doorService = doorService;
-            _roomsById = roomsById; 
+            _roomsById = roomsById;
         }
         public bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom)
         {
@@ -1419,6 +1483,10 @@ namespace TempleOfDoom.BusinessLogic.Services
                 Direction.West => Direction.East,
                 _ => direction
             };
+        }
+        public Room FindRoomById(int roomId)
+        {
+            return _roomsById[roomId];
         }
     }
 }
@@ -1854,6 +1922,34 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
     }
 }
 
+// File: TempleOfDoom.BusinessLogic\Models\Tile\IceTile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public class IceTile : FloorTile
+    {
+        public override string Representation => "~";
+    }
+}
+
+// File: TempleOfDoom.BusinessLogic\Models\Tile\LadderTile.cs
+namespace TempleOfDoom.BusinessLogic.Models.Tile
+{
+    public class LadderTile : Tile
+    {
+        public override string Representation => "H";     // or any symbol you want
+        public override bool IsWalkable => true;          // Player/enemies can stand on it
+        // NEW FIELDS
+        public int ConnectedRoomId { get; }
+        public Coordinates TargetCoordinates { get; }
+        // NEW CONSTRUCTOR
+        public LadderTile(int connectedRoomId, Coordinates targetCoordinates)
+        {
+            ConnectedRoomId = connectedRoomId;
+            TargetCoordinates = targetCoordinates;
+        }
+    }
+}
+
 // File: TempleOfDoom.BusinessLogic\Models\Tile\Tile.cs
 namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
@@ -1883,7 +1979,10 @@ namespace TempleOfDoom.DataAccess
         public int? SOUTH { get; set; }
         public int? EAST { get; set; }
         public int? WEST { get; set; }
+        public int? UPPER { get; set; }
+        public int? LOWER { get; set; }
         public List<DoorDto> Doors { get; set; }
+        public LadderDto Ladder { get; set; }
     }
 }
 
@@ -1949,6 +2048,18 @@ namespace TempleOfDoom.DataAccess
     }
 }
 
+// File: TempleOfDoom.DataAccess\LadderDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class LadderDto
+    {
+        public int upperX { get; set; }
+        public int upperY { get; set; }
+        public int lowerX { get; set; }
+        public int lowerY { get; set; }
+    }
+}
+
 // File: TempleOfDoom.DataAccess\LevelDto.cs
 namespace TempleOfDoom.DataAccess
 {
@@ -1983,6 +2094,18 @@ namespace TempleOfDoom.DataAccess
         public int Height { get; set; }
         public List<ItemDto> Items { get; set; }
         public List<EnemyDto> Enemies { get; set; }
+        public List<SpecialFloorTileDto> SpecialFloorTiles { get; set; }
+    }
+}
+
+// File: TempleOfDoom.DataAccess\SpecialFloorTileDto.cs
+namespace TempleOfDoom.DataAccess
+{
+    public class SpecialFloorTileDto
+    {
+        public string Type { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
     }
 }
 

@@ -14,5 +14,6 @@ namespace TempleOfDoom.DataAccess
         public int Height { get; set; }
         public List<ItemDto> Items { get; set; }
         public List<EnemyDto> Enemies { get; set; }
+        public List<SpecialFloorTileDto> SpecialFloorTiles { get; set; }
     }
 }
