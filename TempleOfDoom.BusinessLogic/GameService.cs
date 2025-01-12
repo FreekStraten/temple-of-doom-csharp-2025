@@ -57,22 +57,25 @@ namespace TempleOfDoom.BusinessLogic
         {
             if (IsGameOver) return;
 
-            // 1. Move the player
+            // 1) Move the player
             if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
             {
                 if (newRoom != CurrentRoom)
                 {
                     SetCurrentRoom(newRoom);
                 }
+
+                // 1A) Check collision: maybe the player stepped onto an enemy’s tile
+                CheckForEnemyCollision();
             }
 
-            // 2. Now move enemies in the current room
+            // 2) Move all enemies in the current room
             MoveEnemiesInRoom(CurrentRoom);
 
-            // 3. (Optional) Check if the player has collided with an enemy, etc.
-            //    For example, if your design says "if you step on an enemy, you take damage"
-            //    you'd do it here. Or you might handle that in the Move() logic, up to you.
+            // 2A) Check collision again: maybe an enemy moved onto the player’s tile
+            CheckForEnemyCollision();
         }
+
 
         private void MoveEnemiesInRoom(Room room)
         {
@@ -155,5 +158,33 @@ namespace TempleOfDoom.BusinessLogic
                 }
             }
         }
+
+        private void CheckForEnemyCollision()
+        {
+            // If the game is already over, do nothing
+            if (_gameStateManager.IsGameOver) return;
+
+            // Get the player’s position
+            var playerPos = Player.Position;
+
+            // Check every enemy in the current room
+            var enemiesSnapshot = CurrentRoom.Enemies.ToList();
+            foreach (var enemy in enemiesSnapshot)
+            {
+                // If the enemy’s coordinates == player’s coordinates, then do damage
+                if (enemy.CurrentXLocation == playerPos.X && enemy.CurrentYLocation == playerPos.Y)
+                {
+                    Player.Lives -= 1;
+
+                    // If player's lives have dropped to 0 or below, mark lose
+                    if (Player.Lives <= 0)
+                    {
+                        _gameStateManager.MarkLose();
+                        return; // No need to continue checking more enemies
+                    }
+                }
+            }
+        }
+
     }
 }
