@@ -83,6 +83,10 @@ namespace TempleOfDoom.Presentation
                     {
                         gameService.HandlePlayerMovement(direction.Value);
                     }
+                    else if (keyInfo.Key == ConsoleKey.Spacebar)
+                    {
+                        gameService.HandlePlayerShoot();
+                    }
                     else if (keyInfo.Key == ConsoleKey.Escape)
                     {
                         isRunning = false;

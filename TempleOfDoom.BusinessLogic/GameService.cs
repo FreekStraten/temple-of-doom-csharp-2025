@@ -7,6 +7,7 @@ using CODE_TempleOfDoom_DownloadableContent;
 using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Models.Items;
 using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic
 {
@@ -118,6 +119,41 @@ namespace TempleOfDoom.BusinessLogic
         {
             // We can see the real library's Enemy here because BusinessLogic references it.
             return room.Enemies.Select(e => (e.CurrentXLocation, e.CurrentYLocation));
+        }
+
+        public void HandlePlayerShoot()
+        {
+            if (IsGameOver) return; // if the game is already over, do nothing
+
+            // 1. Calculate the 4 adjacent positions
+            var pPos = Player.Position;
+            var adjacentPositions = new List<Coordinates>
+            {
+                new Coordinates(pPos.X,     pPos.Y - 1), // North
+                new Coordinates(pPos.X + 1, pPos.Y    ), // East
+                new Coordinates(pPos.X,     pPos.Y + 1), // South
+                new Coordinates(pPos.X - 1, pPos.Y    )  // West
+            };
+
+            // 2. Loop the enemies in the current room
+            //    If an enemy is in an adjacent position, do damage.
+            var enemiesSnapshot = CurrentRoom.Enemies.ToList();
+            foreach (var enemy in enemiesSnapshot)
+            {
+                // Check if that enemy is in one of the 4 adjacent squares:
+                bool isAdjacent = adjacentPositions.Any(pos =>
+                    pos.X == enemy.CurrentXLocation &&
+                    pos.Y == enemy.CurrentYLocation);
+
+                if (isAdjacent)
+                {
+                    // 3. Damage the enemy by 1
+                    enemy.DoDamage(1);
+
+                    // If the enemy dies, the OnDeath event automatically
+                    // removes it from the room (as we've set up earlier).
+                }
+            }
         }
     }
 }

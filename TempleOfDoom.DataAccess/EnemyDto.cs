@@ -16,5 +16,4 @@ namespace TempleOfDoom.DataAccess
         public int MaxX { get; set; }
         public int MaxY { get; set; }
     }
-
 }
