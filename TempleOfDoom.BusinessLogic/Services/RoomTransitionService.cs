@@ -14,13 +14,16 @@ namespace TempleOfDoom.BusinessLogic.Services
     {
         private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
         private readonly IDoorService _doorService;
-        private readonly Dictionary<int, Room> _roomsById; 
+        private readonly Dictionary<int, Room> _roomsById;
 
-        public RoomTransitionService(Dictionary<int, Dictionary<Direction, int>> roomConnections, IDoorService doorService, Dictionary<int, Room> roomsById) 
+        public RoomTransitionService(
+               Dictionary<int, Dictionary<Direction, int>> roomConnections,
+               IDoorService doorService,
+               Dictionary<int, Room> roomsById)
         {
             _roomConnections = roomConnections;
             _doorService = doorService;
-            _roomsById = roomsById; 
+            _roomsById = roomsById;
         }
 
         public bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom)
@@ -67,6 +70,11 @@ namespace TempleOfDoom.BusinessLogic.Services
                 Direction.West => Direction.East,
                 _ => direction
             };
+        }
+
+        public Room FindRoomById(int roomId)
+        {
+            return _roomsById[roomId];
         }
     }
 }

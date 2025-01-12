@@ -3,15 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TempleOfDoom.BusinessLogic.Struct;
 
 namespace TempleOfDoom.BusinessLogic.Models.Tile
 {
     public class LadderTile : Tile
     {
-        // We'll just display an 'H' to represent a ladder
-        public override string Representation => "H";
+        public override string Representation => "H";     // or any symbol you want
+        public override bool IsWalkable => true;          // Player/enemies can stand on it
 
-        // Let’s assume you can walk onto it
-        public override bool IsWalkable => true;
+        // NEW FIELDS
+        public int ConnectedRoomId { get; }
+        public Coordinates TargetCoordinates { get; }
+
+        // NEW CONSTRUCTOR
+        public LadderTile(int connectedRoomId, Coordinates targetCoordinates)
+        {
+            ConnectedRoomId = connectedRoomId;
+            TargetCoordinates = targetCoordinates;
+        }
     }
+
 }

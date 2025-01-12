@@ -3,22 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CODE_TempleOfDoom_DownloadableContent;
+using TempleOfDoom.BusinessLogic.Decorators;
+using TempleOfDoom.BusinessLogic.Enum;
+using TempleOfDoom.BusinessLogic.Factories;
+using TempleOfDoom.BusinessLogic.Interfaces;
+using TempleOfDoom.BusinessLogic.Models;
+using TempleOfDoom.BusinessLogic.Models.Doors;
+using TempleOfDoom.BusinessLogic.Models.Tile;
+using TempleOfDoom.BusinessLogic.Struct;
+using TempleOfDoom.DataAccess;
 
 namespace TempleOfDoom.BusinessLogic.Mappers
 {
-    using CODE_TempleOfDoom_DownloadableContent;
-    using TempleOfDoom.BusinessLogic.Decorators;
-    using TempleOfDoom.BusinessLogic.Enum;
-    using TempleOfDoom.BusinessLogic.Factories;
-    using TempleOfDoom.BusinessLogic.Interfaces;
-    using TempleOfDoom.BusinessLogic.Models;
-    using TempleOfDoom.BusinessLogic.Models.Doors;
-    using TempleOfDoom.BusinessLogic.Models.Tile;
-    using TempleOfDoom.BusinessLogic.Struct;
-    using TempleOfDoom.DataAccess;
-
     public static class LevelMapper
     {
+
+            private static Dictionary<(int roomId, int x, int y), (int roomId, int x, int y)> _ladderLookup 
+        = new Dictionary<(int, int, int), (int, int, int)>();
+
         public static Room MapRoomDtoToRoom(RoomDto roomDto, IItemFactory itemFactory)
         {
             var room = new Room(roomDto.Width, roomDto.Height)
@@ -126,23 +129,35 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                 // --------------------------------------
                 if (connection.UPPER.HasValue && connection.LOWER.HasValue && connection.Ladder != null)
                 {
-                    // Place ladder tile in the "upper" room
+                    // Identify which rooms are upper vs lower
                     var upperRoom = rooms[connection.UPPER.Value];
+                    var lowerRoom = rooms[connection.LOWER.Value];
+
+                    // Ladder positions within each room
                     var ladderUpX = connection.Ladder.upperX;
                     var ladderUpY = connection.Ladder.upperY;
-
-                    // Replace whatever tile is currently at (upperY, upperX) with LadderTile
-                    upperRoom.Layout[ladderUpY, ladderUpX] = new LadderTile();
-
-                    // Place ladder tile in the "lower" room
-                    var lowerRoom = rooms[connection.LOWER.Value];
                     var ladderDownX = connection.Ladder.lowerX;
                     var ladderDownY = connection.Ladder.lowerY;
 
-                    lowerRoom.Layout[ladderDownY, ladderDownX] = new LadderTile();
+                    // 1) Create a LadderTile in the upper room that leads DOWN
+                    //    That means it teleports us to the "lower" room at (ladderDownX, ladderDownY).
+                    var ladderTileDown = new LadderTile(
+                        connectedRoomId: connection.LOWER.Value,
+                        targetCoordinates: new Coordinates(ladderDownX, ladderDownY)
+                    );
+                    upperRoom.Layout[ladderUpY, ladderUpX] = ladderTileDown;
+
+                    // 2) Create a LadderTile in the lower room that leads UP
+                    //    That means it teleports us to the "upper" room at (ladderUpX, ladderUpY).
+                    var ladderTileUp = new LadderTile(
+                        connectedRoomId: connection.UPPER.Value,
+                        targetCoordinates: new Coordinates(ladderUpX, ladderUpY)
+                    );
+                    lowerRoom.Layout[ladderDownY, ladderDownX] = ladderTileUp;
                 }
             }
         }
+
 
 
         private static void CreateDoorTileForRoom(Room room, Direction direction, IDoor door)

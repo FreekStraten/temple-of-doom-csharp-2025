@@ -10,6 +10,7 @@ namespace TempleOfDoom.BusinessLogic.Interfaces
 {
     public interface IRoomTransitionService
     {
+        Room FindRoomById(int roomId);
         bool TryTransition(Room currentRoom, Player player, Direction direction, out Room nextRoom);
     }
 }
