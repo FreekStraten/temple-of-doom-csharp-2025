@@ -12,6 +12,11 @@ namespace TempleOfDoom.DataAccess
         public int? SOUTH { get; set; }
         public int? EAST { get; set; }
         public int? WEST { get; set; }
+
+        public int? UPPER { get; set; }
+        public int? LOWER { get; set; }
+
         public List<DoorDto> Doors { get; set; }
+        public LadderDto Ladder { get; set; }
     }
 }

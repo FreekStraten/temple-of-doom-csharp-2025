@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 12-1-2025 11:20:05
+// Consolidated Code Extracted on 12-1-2025 11:31:50
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation
@@ -156,6 +156,10 @@ namespace TempleOfDoom.Presentation
                     if (direction.HasValue)
                     {
                         gameService.HandlePlayerMovement(direction.Value);
+                    }
+                    else if (keyInfo.Key == ConsoleKey.Spacebar)
+                    {
+                        gameService.HandlePlayerShoot();
                     }
                     else if (keyInfo.Key == ConsoleKey.Escape)
                     {
@@ -448,19 +452,20 @@ namespace TempleOfDoom.BusinessLogic
         public void HandlePlayerMovement(Direction direction)
         {
             if (IsGameOver) return;
-            // 1. Move the player
+            // 1) Move the player
             if (_playerMovementController.TryMovePlayer(Player, CurrentRoom, direction, out var newRoom))
             {
                 if (newRoom != CurrentRoom)
                 {
                     SetCurrentRoom(newRoom);
                 }
+                // 1A) Check collision: maybe the player stepped onto an enemy’s tile
+                CheckForEnemyCollision();
             }
-            // 2. Now move enemies in the current room
+            // 2) Move all enemies in the current room
             MoveEnemiesInRoom(CurrentRoom);
-            // 3. (Optional) Check if the player has collided with an enemy, etc.
-            //    For example, if your design says "if you step on an enemy, you take damage"
-            //    you'd do it here. Or you might handle that in the Move() logic, up to you.
+            // 2A) Check collision again: maybe an enemy moved onto the player’s tile
+            CheckForEnemyCollision();
         }
         private void MoveEnemiesInRoom(Room room)
         {
@@ -503,6 +508,59 @@ namespace TempleOfDoom.BusinessLogic
         {
             // We can see the real library's Enemy here because BusinessLogic references it.
             return room.Enemies.Select(e => (e.CurrentXLocation, e.CurrentYLocation));
+        }
+        public void HandlePlayerShoot()
+        {
+            if (IsGameOver) return; // if the game is already over, do nothing
+            // 1. Calculate the 4 adjacent positions
+            var pPos = Player.Position;
+            var adjacentPositions = new List<Coordinates>
+            {
+                new Coordinates(pPos.X,     pPos.Y - 1), // North
+                new Coordinates(pPos.X + 1, pPos.Y    ), // East
+                new Coordinates(pPos.X,     pPos.Y + 1), // South
+                new Coordinates(pPos.X - 1, pPos.Y    )  // West
+            };
+            // 2. Loop the enemies in the current room
+            //    If an enemy is in an adjacent position, do damage.
+            var enemiesSnapshot = CurrentRoom.Enemies.ToList();
+            foreach (var enemy in enemiesSnapshot)
+            {
+                // Check if that enemy is in one of the 4 adjacent squares:
+                bool isAdjacent = adjacentPositions.Any(pos =>
+                    pos.X == enemy.CurrentXLocation &&
+                    pos.Y == enemy.CurrentYLocation);
+                if (isAdjacent)
+                {
+                    // 3. Damage the enemy by 1
+                    enemy.DoDamage(1);
+                    // If the enemy dies, the OnDeath event automatically
+                    // removes it from the room (as we've set up earlier).
+                }
+            }
+        }
+        private void CheckForEnemyCollision()
+        {
+            // If the game is already over, do nothing
+            if (_gameStateManager.IsGameOver) return;
+            // Get the player’s position
+            var playerPos = Player.Position;
+            // Check every enemy in the current room
+            var enemiesSnapshot = CurrentRoom.Enemies.ToList();
+            foreach (var enemy in enemiesSnapshot)
+            {
+                // If the enemy’s coordinates == player’s coordinates, then do damage
+                if (enemy.CurrentXLocation == playerPos.X && enemy.CurrentYLocation == playerPos.Y)
+                {
+                    Player.Lives -= 1;
+                    // If player's lives have dropped to 0 or below, mark lose
+                    if (Player.Lives <= 0)
+                    {
+                        _gameStateManager.MarkLose();
+                        return; // No need to continue checking more enemies
+                    }
+                }
+            }
         }
     }
 }

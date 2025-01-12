@@ -105,15 +105,15 @@ namespace TempleOfDoom.BusinessLogic.Mappers
         {
             foreach (var connection in connections)
             {
-                // Apply to north/south
+                // --------------------------------------
+                // Existing DOOR logic (NORTH, SOUTH, etc.)
+                // --------------------------------------
                 if (connection.NORTH.HasValue && connection.SOUTH.HasValue)
                 {
                     IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
                     CreateDoorTileForRoom(rooms[connection.NORTH.Value], Direction.South, door);
                     CreateDoorTileForRoom(rooms[connection.SOUTH.Value], Direction.North, door);
                 }
-
-                // East/West
                 if (connection.EAST.HasValue && connection.WEST.HasValue)
                 {
                     IDoor door = DoorFactory.CreateCompositeDoor(connection.Doors);
@@ -121,9 +121,29 @@ namespace TempleOfDoom.BusinessLogic.Mappers
                     CreateDoorTileForRoom(rooms[connection.WEST.Value], Direction.East, door);
                 }
 
-                // If in part 2 you have UPPER/LOWER or portals, you'd handle them here similarly.
+                // --------------------------------------
+                // NEW LADDER LOGIC
+                // --------------------------------------
+                if (connection.UPPER.HasValue && connection.LOWER.HasValue && connection.Ladder != null)
+                {
+                    // Place ladder tile in the "upper" room
+                    var upperRoom = rooms[connection.UPPER.Value];
+                    var ladderUpX = connection.Ladder.upperX;
+                    var ladderUpY = connection.Ladder.upperY;
+
+                    // Replace whatever tile is currently at (upperY, upperX) with LadderTile
+                    upperRoom.Layout[ladderUpY, ladderUpX] = new LadderTile();
+
+                    // Place ladder tile in the "lower" room
+                    var lowerRoom = rooms[connection.LOWER.Value];
+                    var ladderDownX = connection.Ladder.lowerX;
+                    var ladderDownY = connection.Ladder.lowerY;
+
+                    lowerRoom.Layout[ladderDownY, ladderDownX] = new LadderTile();
+                }
             }
         }
+
 
         private static void CreateDoorTileForRoom(Room room, Direction direction, IDoor door)
         {
