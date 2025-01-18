@@ -12,11 +12,9 @@ namespace TempleOfDoom.BusinessLogic.Models.Tile
         public override string Representation => "H";     // or any symbol you want
         public override bool IsWalkable => true;          // Player/enemies can stand on it
 
-        // NEW FIELDS
         public int ConnectedRoomId { get; }
         public Coordinates TargetCoordinates { get; }
 
-        // NEW CONSTRUCTOR
         public LadderTile(int connectedRoomId, Coordinates targetCoordinates)
         {
             ConnectedRoomId = connectedRoomId;

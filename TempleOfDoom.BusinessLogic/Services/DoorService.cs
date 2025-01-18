@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TempleOfDoom.BusinessLogic.Decorators;  // If you need references to the decorator classes
+using TempleOfDoom.BusinessLogic.Decorators; 
 using TempleOfDoom.BusinessLogic.Enum;
 using TempleOfDoom.BusinessLogic.Interfaces;
 using TempleOfDoom.BusinessLogic.Models.Tile;

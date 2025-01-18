@@ -16,7 +16,7 @@ namespace TempleOfDoom.DataAccess
         public int? UPPER { get; set; }
         public int? LOWER { get; set; }
 
-        public List<DoorDto> Doors { get; set; }
-        public LadderDto Ladder { get; set; }
+        public List<DoorDto>? Doors { get; set; }
+        public LadderDto? Ladder { get; set; }
     }
 }

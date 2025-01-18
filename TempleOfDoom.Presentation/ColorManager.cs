@@ -10,8 +10,6 @@ namespace TempleOfDoom.Presentation
 {
     public static class ColorManager
     {
-        // If you want, these could be loaded from a config file or a JSON in the future.
-
         // Default colors
         private static readonly ConsoleColor DefaultTileColor = ConsoleColor.White;
         private static readonly ConsoleColor DefaultItemColor = ConsoleColor.White;

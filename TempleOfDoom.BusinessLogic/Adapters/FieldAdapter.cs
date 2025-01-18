@@ -60,7 +60,6 @@ namespace TempleOfDoom.BusinessLogic.Adapters
         {
             var tile = _room.GetTileAt(new Coordinates(_x, _y));
 
-            // If it's a FloorTile => passable
             if (tile is FloorTile) return true;
 
             // If it's a DoorTile => you can decide whether enemies can pass if the door is open

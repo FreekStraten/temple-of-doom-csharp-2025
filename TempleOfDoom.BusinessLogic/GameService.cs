@@ -149,11 +149,6 @@ namespace TempleOfDoom.BusinessLogic
             return count;
         }
 
-        public IEnumerable<(int X, int Y)> GetEnemyPositions(Room room)
-        {
-            // We can see the real library's Enemy here because BusinessLogic references it.
-            return room.Enemies.Select(e => (e.CurrentXLocation, e.CurrentYLocation));
-        }
 
         public void HandlePlayerShoot()
         {
@@ -216,6 +211,5 @@ namespace TempleOfDoom.BusinessLogic
                 }
             }
         }
-
     }
 }

@@ -12,6 +12,8 @@ namespace TempleOfDoom.BusinessLogic.Services
 {
     public class RoomTransitionService : IRoomTransitionService
     {
+        private static readonly Coordinates DEFAULT_ENTRY_COORDINATES = new Coordinates(1, 1);
+
         private readonly Dictionary<int, Dictionary<Direction, int>> _roomConnections;
         private readonly IDoorService _doorService;
         private readonly Dictionary<int, Room> _roomsById;
@@ -56,7 +58,7 @@ namespace TempleOfDoom.BusinessLogic.Services
                 Direction.South => new Coordinates(nextRoom.Width / 2, nextRoom.Height - 1),
                 Direction.West => new Coordinates(0, nextRoom.Height / 2),
                 Direction.East => new Coordinates(nextRoom.Width - 1, nextRoom.Height / 2),
-                _ => new Coordinates(1, 1)
+                _ => DEFAULT_ENTRY_COORDINATES
             };
         }
 
