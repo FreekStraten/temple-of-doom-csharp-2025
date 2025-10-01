@@ -1,7 +1,7 @@
 # Temple of Doom (C# Console)
 
 **Code Design–opdracht (Avans, 2025)** — de nadruk ligt op **architectuur en code-kwaliteit**, niet op feature-compleetheid of game-polish. Het speelbare prototype is er om de ontwerpkeuzes te demonstreren.  
-**Status:** Coursework (Archived) · **Rol:** Duo · **Jaar:** 2025
+**Rol:** Duo/Solo · **Jaar:** 2025
 
 > **Focus van de opdracht:** gestructureerde code, scheiding van verantwoordelijkheden, uitbreidbaarheid en testbaarheid (SOLID, layers, patronen).
 
