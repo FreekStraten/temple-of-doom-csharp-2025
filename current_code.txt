@@ -1,4 +1,4 @@
-// Consolidated Code Extracted on 18-1-2025 14:58:42
+// Consolidated Code Extracted on 19-1-2025 16:48:17
 
 // File: TempleOfDoom.Presentation\ColorManager.cs
 namespace TempleOfDoom.Presentation

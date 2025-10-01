@@ -33,7 +33,7 @@ namespace TempleOfDoom.BusinessLogic.Mappers
 
             // 1) Generate layout with normal FloorTile / WallTile
             room.GenerateLayout();
-
+             
             // 2) If this room has special floor tiles (like ice), overwrite them
             if (roomDto.SpecialFloorTiles != null)
             {

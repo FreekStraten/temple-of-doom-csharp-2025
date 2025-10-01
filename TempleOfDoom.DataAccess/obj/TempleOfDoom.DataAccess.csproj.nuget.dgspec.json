@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj": {}
+    "C:\\Users\\Freek\\Documents\\GitHub\\temple-of-doom-csharp-2025\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj": {
+    "C:\\Users\\Freek\\Documents\\GitHub\\temple-of-doom-csharp-2025\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj",
+        "projectUniqueName": "C:\\Users\\Freek\\Documents\\GitHub\\temple-of-doom-csharp-2025\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj",
         "projectName": "TempleOfDoom.DataAccess",
-        "projectPath": "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj",
+        "projectPath": "C:\\Users\\Freek\\Documents\\GitHub\\temple-of-doom-csharp-2025\\TempleOfDoom.DataAccess\\TempleOfDoom.DataAccess.csproj",
         "packagesPath": "C:\\Users\\Freek\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Freek\\OneDrive\\Documenten\\GitHub\\deelopdracht-1-24-25-temple-of-doom-freekstaten_\\TempleOfDoom.DataAccess\\obj\\",
+        "outputPath": "C:\\Users\\Freek\\Documents\\GitHub\\temple-of-doom-csharp-2025\\TempleOfDoom.DataAccess\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -26,6 +26,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -38,7 +39,13 @@
           "warnAsError": [
             "NU1605"
           ]
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net8.0": {
@@ -59,7 +66,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
