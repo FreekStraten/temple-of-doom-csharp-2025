@@ -17,6 +17,7 @@ C# · .NET 8 · Console I/O · System.Text.Json
 
 ## Demo
 Het is een **prototype** om het design te tonen.
+
 ![Gameplay](docs/demo.gif)
 
 ### Besturing / doel
