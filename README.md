@@ -1,5 +1,8 @@
 # Temple of Doom (C# Console)
 
+![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4)
+![Status](https://img.shields.io/badge/status-archived-inactive)
+
 **Code Design–opdracht (Avans, 2025)** — de nadruk ligt op **architectuur en code-kwaliteit**, niet op feature-compleetheid of game-polish. Het speelbare prototype is er om de ontwerpkeuzes te demonstreren.  
 **Rol:** Duo/Solo · **Jaar:** 2025
 
@@ -64,11 +67,16 @@ TempleOfDoom.Presentation/    # Console UI (enige laag die Console aanspreekt)
 - **Strategy** voor data‑loaders (JSON nu, later uitbreidbaar met XML).
 - **Decorator/Composite** om deur‑eigenschappen te combineren (bijv. *colored* + *closing gate*).
 
-## Refactor‑backlog
-- Services **ontkoppelen** (vermijd deep nesting en lange `switch`‑ketens).
-- **Inappropriate intimacy** verminderen: logica naar domeinobjecten verplaatsen.
-- **IceTile** implementeren (nu placeholder).
-- Unit tests toevoegen voor movement, door‑rules en item‑interactie.
+## Architecture at a glance
+- Gedrag zit op de tegel zelf (bv. **IceTile** → glijden), niet in services met switches.
+- **Data-gedreven** levels (JSON) → creatie via **Factories** (Tiles / Doors / Items).
+- **Layers:** Presentation (Console) · BusinessLogic (domain) · DataAccess (loaders).
+- Minder nesting door guard-clauses en kleine methods.
+- Uitbreidbaar: nieuwe tile/door/item = alleen de factory aanvullen.
+
+## Docent feedback
+- [ ] Sommige services ontkoppelen (vermijd deep nesting & switches)
+- [ ] Inappropriate intimacy reduceren (meer gedrag in domain)
 
 ## Credits
 Gemaakt in **duo/solo** voor het vak **Code Design** (Avans Hogeschool), 2025.
