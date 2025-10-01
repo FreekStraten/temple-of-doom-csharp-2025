@@ -69,9 +69,5 @@ TempleOfDoom.Presentation/    # Console UI (enige laag die Console aanspreekt)
 - **IceTile** implementeren (nu placeholder).
 - Unit tests toevoegen voor movement, door‑rules en item‑interactie.
 
-## Bekend
-- Build‑artefacts (`bin/`, `obj/`) en IDE‑files (`.vs/`) zijn in `.gitignore` opgenomen.
-- Repo is **archived** (opdracht afgerond); wijzigingen kunnen in een nieuwe branch.
-
 ## Credits
-Gemaakt in **duo** voor het vak **Code Design** (Avans Hogeschool), 2025.
+Gemaakt in **duo/solo** voor het vak **Code Design** (Avans Hogeschool), 2025.
