@@ -1,7 +1,15 @@
-bin/
-obj/
+# Build (alle submappen)
+**/[Bb]in/
+**/[Oo]bj/
+**/[Tt]est[Rr]esults/
+
+# IDE
 .vs/
+.vscode/
+.idea/
 *.user
 *.suo
-TestResults/
 
+# NuGet/artefacts
+*.nupkg
+*.snupkg
