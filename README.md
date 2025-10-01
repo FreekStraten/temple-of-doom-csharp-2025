@@ -1,23 +1,28 @@
 # Temple of Doom (C# Console)
 
-Console dungeon crawler als **duo-opdracht** voor *Code Design* (Avans, 2025). De wereld bestaat uit **kamers, items en deuren** en wordt **data‑gedreven** ingeladen uit **JSON-levels**.  
-**Status:** Coursework (Archived) · **Rol:** Duo · **Jaar:** 2025
+**Code Design–opdracht (Avans, 2025)** — de nadruk ligt op **architectuur en code-kwaliteit**, niet op feature-compleetheid of game-polish. Het speelbare prototype is er om de ontwerpkeuzes te demonstreren.  
+**Rol:** Duo/Solo · **Jaar:** 2025
+
+> **Focus van de opdracht:** gestructureerde code, scheiding van verantwoordelijkheden, uitbreidbaarheid en testbaarheid (SOLID, layers, patronen).
 
 ## Tech stack
 C# · .NET 8 · Console I/O · System.Text.Json
 
-## Highlights
-- **Kamers & beweging** – speler ziet steeds de huidige kamer en beweegt met pijltjestoetsen.
-- **Items & effecten** – o.a. traps (damage/verdwijnen), keys, Sankara stones.
-- **Deuren & regels** – o.a. *colored*, *toggle*, *closing gate*, *open on odd*, *open on stones in room*.
-- **Data‑gedreven** – level(s) worden uit **JSON** geladen; ontwerp is uitbreidbaar (bijv. XML loader).
+## Design highlights
+- **Layered architecture** – `Presentation` (Console) ↔ `BusinessLogic` (domain) ↔ `DataAccess` (loaders). Alleen de UI-laag praat met de Console.
+- **Data-gedreven** – levels uit **JSON**; gemakkelijk uit te breiden (bv. XML) via **Strategy** voor loaders.
+- **Combineerbare regels** – deur-/itemlogica opgebouwd met **Decorator/Composite** (bijv. *colored* + *closing gate*).
+- **SOLID** – kleine klassen met één verantwoordelijkheid; afhankelijkheden via interfaces (DIP) voor testbaarheid.
+- **Test seams** – domeinlogica is UI-vrij en daardoor los te testen.
 
 ## Demo
+Het is een **prototype** om het design te tonen.
+
 ![Gameplay](docs/demo.gif)
 
-## Demo (tekst)
-- **Besturing:** pijltjestoetsen / WASD
-- **Doel:** verzamel 5 *Sankara stones* → win; 0 levens → game over.
+### Besturing / doel
+- **Bewegen:** pijltjestoetsen / WASD  
+- **Doel:** verzamel 5 *Sankara stones* → win; 0 levens → game over
 
 ## Snel starten
 > Vereisten: **.NET 8 SDK**
@@ -25,11 +30,7 @@ C# · .NET 8 · Console I/O · System.Text.Json
 ```bash
 git clone https://github.com/FreekStraten/temple-of-doom-csharp-2025.git
 cd temple-of-doom-csharp-2025
-
-# Build
 dotnet build
-
-# Run (console UI)
 dotnet run --project TempleOfDoom.Presentation
 ```
 
@@ -69,9 +70,5 @@ TempleOfDoom.Presentation/    # Console UI (enige laag die Console aanspreekt)
 - **IceTile** implementeren (nu placeholder).
 - Unit tests toevoegen voor movement, door‑rules en item‑interactie.
 
-## Bekend
-- Build‑artefacts (`bin/`, `obj/`) en IDE‑files (`.vs/`) zijn in `.gitignore` opgenomen.
-- Repo is **archived** (opdracht afgerond); wijzigingen kunnen in een nieuwe branch.
-
 ## Credits
-Gemaakt in **duo** voor het vak **Code Design** (Avans Hogeschool), 2025.
+Gemaakt in **duo/solo** voor het vak **Code Design** (Avans Hogeschool), 2025.
