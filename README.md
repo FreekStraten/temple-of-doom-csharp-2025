@@ -74,6 +74,19 @@ TempleOfDoom.Presentation/    # Console UI (enige laag die Console aanspreekt)
 - Minder nesting door guard-clauses en kleine methods.
 - Uitbreidbaar: nieuwe tile/door/item = alleen de factory aanvullen.
 
+## Architectuur-diagrammen
+> **Let op:** de diagrammen zijn een **iets verouderde snapshot** t.o.v. de huidige code. Ze geven de hoofdlijn van het ontwerp weer.
+
+<p align="center">
+  <img src="docs/diagrams/class-diagram-2025-1.png" alt="Class Diagram (snapshot)" width="760">
+</p>
+
+<p align="center">
+  <img src="docs/diagrams/sequence-move-shoot-2025-1.png" alt="Sequence Diagram – movement/collisions/shooting (snapshot)" width="760">
+</p>
+
+
+
 ## Docent feedback
 - [ ] Sommige services ontkoppelen (vermijd deep nesting & switches)
 - [ ] Inappropriate intimacy reduceren (meer gedrag in domain)
